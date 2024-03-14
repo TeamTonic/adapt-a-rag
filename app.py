@@ -108,3 +108,43 @@ from llama_index.core.llama_pack import download_llama_pack
 
 # file_extractor = {".pdf": parser}
 # documents = SimpleDirectoryReader("./data", file_extractor=file_extractor).load_data()
+
+
+def choose_reader(file_path: str) -> Any:
+    """Choose the appropriate reader based on the file extension."""
+
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    readers: Dict[str, Any] = {
+        ".json": JSONFileReader(),
+        ".csv": CSVFileReader(),
+        ".xlsx": ExcelSheetReader(),
+        ".xls": ExcelSheetReader(),
+        ".html": HTMLFileReader(),
+        ".pdf": PDFMinerReader(),
+        # Add more extensions and their corresponding readers as needed...
+    }
+
+    return readers.get(ext, None)
+
+def load_documents_from_folder(folder_path: str) -> List[Document]:
+    """Loads documents from files within a specified folder"""
+    
+    documents = []
+    for root, _, filenames in os.walk(folder_path):
+        for filename in filenames:
+            full_path = os.path.join(root, filename)
+            
+            reader = choose_reader(full_path)
+
+            if reader:
+                print(f"Loading document from '{filename}' with {type(reader).__name__}")
+                
+                try:
+                    docs = list(reader.load_data(input_files=[full_path]))
+                    documents.extend(docs)
+                    
+                except Exception as e:
+                    print(f"Failed to load document from '{filename}'. Error: {e}")
+                    
+    return documents
