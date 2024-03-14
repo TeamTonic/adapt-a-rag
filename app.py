@@ -96,10 +96,10 @@ def load_documents_from_folder(folder_path: str) -> List[Document]:
                     
                 except Exception as e:
                     print(f"Failed to load document from '{filename}'. Error: {e}")
-# Convert to langchain format
-    # documents = [ doc.to_langchain_format()
-    # for doc in documents
-    # ]                       
+    # Convert to langchain format
+    documents = [ doc.to_langchain_format()
+    for doc in documents
+    ]                       
     return documents
 
 # Ragas : https://colab.research.google.com/gist/virattt/6a91d2a9dcf99604637e400d48d2a918/ragas-first-look.ipynb
