@@ -1,4 +1,6 @@
 ## from weaviate/recipes
+import dspy
+from dsp.utils import deduplicate
 
 class RAG(dspy.Module):
     def __init__(self, num_passages=3):
@@ -60,8 +62,6 @@ class GenerateSearchQuery(dspy.Signature):
     context = dspy.InputField(desc="may contain relevant facts")
     question = dspy.InputField()
     query = dspy.OutputField()
-import dspy
-from dsp.utils import deduplicate
 
 class MultiHopRAG(dspy.Module):
     def __init__(self, passages_per_hop=3, max_hops=2):

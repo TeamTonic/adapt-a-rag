@@ -1,8 +1,9 @@
 langchain
-llamaindex
+llama-index
 dspy-ai
 anthropic
 ragas
 chromadb
 unstructured
 tiktoken
+openai
