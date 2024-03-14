@@ -119,6 +119,77 @@ dataframe.head(10)
 
 #### DSPY APPLICATION LOGIC GOES HERE
 
+## LOADING DATA
+%load_ext autoreload
+%autoreload 2
+
+# %set_env CUDA_VISIBLE_DEVICES=7
+# import sys; sys.path.append('/future/u/okhattab/repos/public/stanfordnlp/dspy')
+
+import dspy
+from dspy.evaluate import Evaluate
+from dspy.datasets.hotpotqa import HotPotQA
+from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
+
+ports = [7140, 7141, 7142, 7143, 7144, 7145]
+llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150)
+colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
+
+dspy.settings.configure(rm=colbertv2, lm=llamaChat)
+
+dataset = dataframe
+trainset = [x.with_inputs('question') for x in dataset.train]
+devset = [x.with_inputs('question') for x in dataset.dev]
+testset = [x.with_inputs('question') for x in dataset.test]
+
+#len(trainset), len(devset), len(testset)
+#trainset[0]
+
+from dsp.utils.utils import deduplicate
+
+class BasicMH(dspy.Module):
+    def __init__(self, passages_per_hop=3):
+        super().__init__()
+
+        self.retrieve = dspy.Retrieve(k=passages_per_hop)
+        self.generate_query = [dspy.ChainOfThought("context, question -> search_query") for _ in range(2)]
+        self.generate_answer = dspy.ChainOfThought("context, question -> answer")
+    
+    def forward(self, question):
+        context = []
+        
+        for hop in range(2):
+            search_query = self.generate_query[hop](context=context, question=question).search_query
+            passages = self.retrieve(search_query).passages
+            context = deduplicate(context + passages)
+
+        return self.generate_answer(context=context, question=question).copy(context=context)
+        
+## Compiling using meta-llama/Llama-2-13b-chat-hf
+RECOMPILE_INTO_LLAMA_FROM_SCRATCH = False
+NUM_THREADS = 24
+
+metric_EM = dspy.evaluate.answer_exact_match
+
+if RECOMPILE_INTO_LLAMA_FROM_SCRATCH:
+    tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
+    basicmh_bs = tp.compile(BasicMH(), trainset=trainset[:50], valset=trainset[50:200])
+
+    ensemble = [prog for *_, prog in basicmh_bs.candidate_programs[:4]]
+
+    for idx, prog in enumerate(ensemble):
+        # prog.save(f'multihop_llama213b_{idx}.json')
+        pass
+if not RECOMPILE_INTO_LLAMA_FROM_SCRATCH:
+    ensemble = []
+
+    for idx in range(4):
+        prog = BasicMH()
+        prog.load(f'multihop_llama213b_{idx}.json')
+        ensemble.append(prog)
+llama_program = ensemble[0]
+
+
 
 # LlamaPack example
 from llama_index.core.llama_pack import download_llama_pack
