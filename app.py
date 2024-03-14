@@ -146,5 +146,8 @@ def load_documents_from_folder(folder_path: str) -> List[Document]:
                     
                 except Exception as e:
                     print(f"Failed to load document from '{filename}'. Error: {e}")
-                    
+# Convert to langchain format
+    # documents = [ doc.to_langchain_format()
+    # for doc in documents
+    # ]                       
     return documents
