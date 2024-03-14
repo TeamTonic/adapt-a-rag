@@ -105,16 +105,18 @@ def load_documents_from_folder(folder_path: str) -> List[Document]:
 # Ragas : https://colab.research.google.com/gist/virattt/6a91d2a9dcf99604637e400d48d2a918/ragas-first-look.ipynb
 from ragas.testset.generator import TestsetGenerator
 from ragas.testset.evolutions import simple, reasoning, multi_context
+import os
 
+# Set your OpenAI API key
+os.environ["OPENAI_API_KEY"] = "InputOpenAIAPIHere"
 # generator with openai models
 generator = TestsetGenerator.with_openai()
-
 # generate testset
 testset = generator.generate_with_langchain_docs(documents, test_size=10, distributions={simple: 0.5, reasoning: 0.25, multi_context: 0.25})
 
 # visualize the dataset as a pandas DataFrame
-dataframe = testset.to_pandas()
-dataframe.head(10)
+#dataframe = testset.to_pandas()
+#dataframe.head(10)
 
 
 #### DSPY APPLICATION LOGIC GOES HERE
