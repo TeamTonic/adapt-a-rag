@@ -1,8 +1,14 @@
 langchain
-llamaindex
+llama-index
+llama-index-readers-file
+llama-index-readers-chroma
+llama-index-readers-web
+llama-parse
 dspy-ai
 anthropic
 ragas
 chromadb
 unstructured
 tiktoken
+openai
+git+https://github.com/stanfordnlp/dspy.git
