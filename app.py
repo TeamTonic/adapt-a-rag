@@ -120,6 +120,43 @@ def rag_retrieval():
 if __name__ == "__main__":
     app.run(debug=True)
 
+import gradio as gr
+# Create interface using Gradio
+interface = gr.Interface(
+    fn=home,
+    inputs=[
+        gr.inputs.Textbox(label="Anthropic API Key"),
+        gr.inputs.Textbox(label="OpenAI API Key"),
+    ],
+    outputs="text",
+    title="API Key Input Form",
+    description="Input your API keys for Anthropic and OpenAI.",
+    theme="default",
+)
+
+interface2 = gr.Interface(
+    fn=generate_data,
+    inputs=None,
+    outputs="text",
+    title="Synthetic Data Generation Form",
+    description="Form for generating synthetic data.",
+    theme="default",
+)
+
+interface3 = gr.Interface(
+    fn=rag_retrieval,
+    inputs=gr.inputs.File(label="Upload File"),
+    outputs="text",
+    title="RAG Retrieval Form",
+    description="Form for RAG retrieval.",
+    theme="default",
+)
+
+if __name__ == "__main__":
+    interface.launch()
+    interface2.launch()
+    interface3.launch()
+
     
 from dspy.modules.anthropic import Claude
 anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
