@@ -11,3 +11,4 @@ chromadb
 unstructured
 tiktoken
 openai
+git+https://github.com/stanfordnlp/dspy.git
