@@ -60,6 +60,104 @@ from llama_index.core import SimpleDirectoryReader
 # # async batch
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 
+import os
+from getpass import getpass
+
+# Function to interactively input API keys
+def input_api_keys():
+    anthropic_api_key = getpass("Enter your Anthropic API Key: ").strip()
+    openai_api_key = getpass("Enter your OpenAI API Key: ").strip()
+    return anthropic_api_key, openai_api_key
+    
+# Main function
+def main():
+    # Input API keys
+    anthropic_api_key, openai_api_key = input_api_keys()
+
+    # Set environment variables
+    os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
+    os.environ["OPENAI_API_KEY"] = openai_api_key
+    
+if __name__ == "__main__":
+    main()
+
+from flask import Flask, render_template, request
+import os
+
+app = Flask(__name__)
+
+# Function to set environment variables from form inputs
+def set_environment_variables():
+    os.environ["ANTHROPIC_API_KEY"] = request.form.get("anthropic_api_key", "")
+    os.environ["OPENAI_API_KEY"] = request.form.get("openai_api_key", "")
+
+# Home page with form to input API keys
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "POST":
+        set_environment_variables()
+        return render_template("query_form.html")
+    return render_template("index.html")
+
+# Route for synthetic data generation form
+@app.route("/generate_data", methods=["GET", "POST"])
+def generate_data():
+    if request.method == "POST":
+        # Handle synthetic data generation here
+        # Access form inputs using request.form.get("input_name")
+        pass
+    return render_template("generate_data.html")
+
+# Route for RAG retrieval form
+@app.route("/rag_retrieval", methods=["GET", "POST"])
+def rag_retrieval():
+    if request.method == "POST":
+        # Handle RAG retrieval here
+        # Access file upload using request.files["file_name"]
+        pass
+    return render_template("rag_retrieval.html")
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+import gradio as gr
+# Create interface using Gradio
+interface = gr.Interface(
+    fn=home,
+    inputs=[
+        gr.inputs.Textbox(label="Anthropic API Key"),
+        gr.inputs.Textbox(label="OpenAI API Key"),
+    ],
+    outputs="text",
+    title="API Key Input Form",
+    description="Input your API keys for Anthropic and OpenAI.",
+    theme="default",
+)
+
+interface2 = gr.Interface(
+    fn=generate_data,
+    inputs=None,
+    outputs="text",
+    title="Synthetic Data Generation Form",
+    description="Form for generating synthetic data.",
+    theme="default",
+)
+
+interface3 = gr.Interface(
+    fn=rag_retrieval,
+    inputs=gr.inputs.File(label="Upload File"),
+    outputs="text",
+    title="RAG Retrieval Form",
+    description="Form for RAG retrieval.",
+    theme="default",
+)
+
+if __name__ == "__main__":
+    interface.launch()
+    interface2.launch()
+    interface3.launch()
+
+    
 from dspy.modules.anthropic import Claude
 anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
 
