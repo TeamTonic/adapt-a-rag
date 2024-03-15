@@ -60,6 +60,9 @@ from llama_index.core import SimpleDirectoryReader
 # # async batch
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 
+from dspy.modules.anthropic import Claude
+anthropicChat = Claude(model="claude-v1.3", port=ports, max_tokens=150)
+
 def choose_reader(file_path: str) -> Any:
     """Choose the appropriate reader based on the file extension."""
 
