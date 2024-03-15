@@ -34,7 +34,7 @@ To set up Adapt-a-RAG, follow these steps:
 
 4. Add your files the folder `add_your_files_here` ; supported formats : ...
 
-4. Run the application:
+5. Run the application:
    ```
    python main.py
    ```
