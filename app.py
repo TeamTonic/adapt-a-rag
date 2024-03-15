@@ -61,7 +61,7 @@ from llama_index.core import SimpleDirectoryReader
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 
 from dspy.modules.anthropic import Claude
-anthropicChat = Claude(model="claude-v1.3", port=ports, max_tokens=150)
+anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
 
 def choose_reader(file_path: str) -> Any:
     """Choose the appropriate reader based on the file extension."""
@@ -116,8 +116,8 @@ generator = TestsetGenerator.with_openai()
 testset = generator.generate_with_langchain_docs(documents, test_size=10, distributions={simple: 0.5, reasoning: 0.25, multi_context: 0.25})
 
 # visualize the dataset as a pandas DataFrame
-dataframe = testset.to_pandas()
-dataframe.head(10)
+#dataframe = testset.to_pandas()
+#dataframe.head(10)
 
 
 #### DSPY APPLICATION LOGIC GOES HERE
@@ -133,12 +133,50 @@ import dspy
 from dspy.evaluate import Evaluate
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
+from dsp.modules.lm import LM
+
+class Claude(LM):
+    """Wrapper around anthropic's API. Supports both the Anthropic and Azure APIs."""
+    def __init__(
+            self,
+            model: str = "claude-3-opus-20240229",
+            api_key: Optional[str] = None,
+            api_base: Optional[str] = None,
+            **kwargs,
+    ):
+        super().__init__(model)
+
+        try:
+            from anthropic import Anthropic, RateLimitError
+        except ImportError as err:
+            raise ImportError("Claude requires `pip install anthropic`.") from err
+        
+        self.provider = "anthropic"
+        self.api_key = api_key = os.environ.get("ANTHROPIC_API_KEY") if api_key is None else api_key
+        self.api_base = BASE_URL if api_base is None else api_base
+
+        self.kwargs = {
+            "temperature": 0.0 if "temperature" not in kwargs else kwargs["temperature"],
+            "max_tokens": min(kwargs.get("max_tokens", 4096), 4096),
+            "top_p": 1.0 if "top_p" not in kwargs else kwargs["top_p"],
+            "top_k": 1 if "top_k" not in kwargs else kwargs["top_k"],
+            "n": kwargs.pop("n", kwargs.pop("num_generations", 1)),
+            **kwargs,
+        }
+        self.kwargs["model"] = model
+        self.history: list[dict[str, Any]] = []
+        self.client = Anthropic(api_key=api_key)
 
 ports = [7140, 7141, 7142, 7143, 7144, 7145]
-llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150)
+#llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
 colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
 
-dspy.settings.configure(rm=colbertv2, lm=llamaChat)
+# Instantiate Claude with desired parameters
+claude_model = Claude(model="claude-3-opus-20240229")
+
+# Configure dspy settings with Claude as the language model
+dspy.settings.configure(rm=colbertv2, lm=claude_model)
+#dspy.settings.configure(rm=colbertv2, lm=llamaChat) #Llama change into model based on line 166
 
 dataset = dataframe
 trainset = [x.with_inputs('question') for x in dataset.train]
@@ -150,47 +188,98 @@ testset = [x.with_inputs('question') for x in dataset.test]
 
 from dsp.utils.utils import deduplicate
 
+#class BasicMH(dspy.Module):
+#    def __init__(self, passages_per_hop=3):
+#       super().__init__()
+
+#        self.retrieve = dspy.Retrieve(k=passages_per_hop)
+#        self.generate_query = [dspy.ChainOfThought("context, question -> search_query") for _ in range(2)]
+#        self.generate_answer = dspy.ChainOfThought("context, question -> answer")
+    
+#    def forward(self, question):
+#        context = []
+        
+#        for hop in range(2):
+#            search_query = self.generate_query[hop](context=context, question=question).search_query
+#            passages = self.retrieve(search_query).passages
+#            context = deduplicate(context + passages)
+
+#        return self.generate_answer(context=context, question=question).copy(context=context)
+
 class BasicMH(dspy.Module):
-    def __init__(self, passages_per_hop=3):
+    def __init__(self, claude_model, passages_per_hop=3):
         super().__init__()
 
-        self.retrieve = dspy.Retrieve(k=passages_per_hop)
-        self.generate_query = [dspy.ChainOfThought("context, question -> search_query") for _ in range(2)]
-        self.generate_answer = dspy.ChainOfThought("context, question -> answer")
+        self.claude_model = claude_model
+        self.passages_per_hop = passages_per_hop
     
     def forward(self, question):
         context = []
         
         for hop in range(2):
-            search_query = self.generate_query[hop](context=context, question=question).search_query
-            passages = self.retrieve(search_query).passages
+            # Retrieval using Claude model
+            search_results = self.claude_model.search(question, context=context, k=self.passages_per_hop)
+            passages = [result.passage for result in search_results]
             context = deduplicate(context + passages)
 
-        return self.generate_answer(context=context, question=question).copy(context=context)
+        # Generation using Claude model
+        answer = self.claude_model.generate(context=context, question=question)
+
+        return answer
+
         
 ## Compiling using meta-llama/Llama-2-13b-chat-hf
-RECOMPILE_INTO_LLAMA_FROM_SCRATCH = False
-NUM_THREADS = 24
+#RECOMPILE_INTO_MODEL_FROM_SCRATCH = False
+#NUM_THREADS = 24
+
+#metric_EM = dspy.evaluate.answer_exact_match
+
+#if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
+#    tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
+#    basicmh_bs = tp.compile(BasicMH(), trainset=trainset[:50], valset=trainset[50:200])
+
+#    ensemble = [prog for *_, prog in basicmh_bs.candidate_programs[:4]]
+
+#    for idx, prog in enumerate(ensemble):
+#        # prog.save(f'multihop_llama213b_{idx}.json')
+#        pass
+#if not RECOMPILE_INTO_MODEL_FROM_SCRATCH:
+#    ensemble = []
+
+#    for idx in range(4):
+#        prog = BasicMH()
+#        prog.load(f'multihop_llama213b_{idx}.json')
+#        ensemble.append(prog)
+#llama_program = ensemble[0]
+#RECOMPILE_INTO_MODEL_FROM_SCRATCH = False
+#NUM_THREADS = 24
 
 metric_EM = dspy.evaluate.answer_exact_match
 
-if RECOMPILE_INTO_LLAMA_FROM_SCRATCH:
+if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
     tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
-    basicmh_bs = tp.compile(BasicMH(), trainset=trainset[:50], valset=trainset[50:200])
+    # Compile the Claude model using BootstrapFewShotWithRandomSearch
+    claude_bs = tp.compile(Claude(), trainset=trainset[:50], valset=trainset[50:200])
 
-    ensemble = [prog for *_, prog in basicmh_bs.candidate_programs[:4]]
+    # Get the compiled programs
+    ensemble = [prog for *_, prog in claude_bs.candidate_programs[:4]]
 
     for idx, prog in enumerate(ensemble):
+        # Save the compiled Claude models if needed
         # prog.save(f'multihop_llama213b_{idx}.json')
         pass
-if not RECOMPILE_INTO_LLAMA_FROM_SCRATCH:
+else:
     ensemble = []
 
     for idx in range(4):
-        prog = BasicMH()
-        prog.load(f'multihop_llama213b_{idx}.json')
-        ensemble.append(prog)
-llama_program = ensemble[0]
+        # Load the previously trained Claude models
+        claude_model = Claude(model=f'multihop_claude3opus_{idx}.json') #need to prepare this .json file
+        ensemble.append(claude_model)
+
+# Select the first Claude model from the ensemble
+claude_program = ensemble[0]
+
+
 
 
 
