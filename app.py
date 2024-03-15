@@ -61,13 +61,14 @@ from llama_index.core import SimpleDirectoryReader
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 
 import os
+from getpass import getpass
 
 # Function to interactively input API keys
 def input_api_keys():
-    anthropic_api_key = input("Enter your Anthropic API Key: ").strip()
-    openai_api_key = input("Enter your OpenAI API Key: ").strip()
+    anthropic_api_key = getpass("Enter your Anthropic API Key: ").strip()
+    openai_api_key = getpass("Enter your OpenAI API Key: ").strip()
     return anthropic_api_key, openai_api_key
-
+    
 # Main function
 def main():
     # Input API keys
@@ -79,6 +80,46 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+from flask import Flask, render_template, request
+import os
+
+app = Flask(__name__)
+
+# Function to set environment variables from form inputs
+def set_environment_variables():
+    os.environ["ANTHROPIC_API_KEY"] = request.form.get("anthropic_api_key", "")
+    os.environ["OPENAI_API_KEY"] = request.form.get("openai_api_key", "")
+
+# Home page with form to input API keys
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "POST":
+        set_environment_variables()
+        return render_template("query_form.html")
+    return render_template("index.html")
+
+# Route for synthetic data generation form
+@app.route("/generate_data", methods=["GET", "POST"])
+def generate_data():
+    if request.method == "POST":
+        # Handle synthetic data generation here
+        # Access form inputs using request.form.get("input_name")
+        pass
+    return render_template("generate_data.html")
+
+# Route for RAG retrieval form
+@app.route("/rag_retrieval", methods=["GET", "POST"])
+def rag_retrieval():
+    if request.method == "POST":
+        # Handle RAG retrieval here
+        # Access file upload using request.files["file_name"]
+        pass
+    return render_template("rag_retrieval.html")
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
     
 from dspy.modules.anthropic import Claude
 anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
