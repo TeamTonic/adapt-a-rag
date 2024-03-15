@@ -36,7 +36,7 @@ To set up Adapt-a-RAG, follow these steps:
 
 5. Run the application:
    ```
-   python main.py
+   python app.py
    ```
 
 ## How It Works
