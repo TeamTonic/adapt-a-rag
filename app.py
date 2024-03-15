@@ -60,6 +60,26 @@ from llama_index.core import SimpleDirectoryReader
 # # async batch
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 
+import os
+
+# Function to interactively input API keys
+def input_api_keys():
+    anthropic_api_key = input("Enter your Anthropic API Key: ").strip()
+    openai_api_key = input("Enter your OpenAI API Key: ").strip()
+    return anthropic_api_key, openai_api_key
+
+# Main function
+def main():
+    # Input API keys
+    anthropic_api_key, openai_api_key = input_api_keys()
+
+    # Set environment variables
+    os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
+    os.environ["OPENAI_API_KEY"] = openai_api_key
+    
+if __name__ == "__main__":
+    main()
+    
 from dspy.modules.anthropic import Claude
 anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
 
