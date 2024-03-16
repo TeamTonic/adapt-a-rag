@@ -451,8 +451,251 @@ else:
         claude_model = Claude(model=f'multihop_claude3opus_{idx}.json') #need to prepare this .json file
         ensemble.append(claude_model)
 
+<<<<<<< Updated upstream
 # Select the first Claude model from the ensemble
 claude_program = ensemble[0]
+=======
+    def generate_prompt_with_history( text, history, max_length=2048):
+        """
+        Generate a prompt with history for the deepseek application.
+        Args:
+            text (str): The text prompt.
+            history (list): List of previous conversation messages.
+            max_length (int): The maximum length of the prompt.
+        Returns:
+            tuple: A tuple containing the generated prompt, conversation, and conversation copy. If the prompt could not be generated within the max_length limit, returns None.
+        """
+        user_role_ind = 0
+        bot_role_ind = 1
+
+        # Initialize conversation
+        conversation = # ADD DSPY HERE vl_chat_processor.new_chat_template()
+
+        if history:
+            conversation.messages = history
+
+        # if image is not None:
+        #     if "<image_placeholder>" not in text:
+        #         text = (
+        #             "<image_placeholder>" + "\n" + text
+        #         )  # append the <image_placeholder> in a new line after the text prompt
+        #     text = (text, image)
+
+        conversation.append_message(conversation.roles[user_role_ind], text)
+        conversation.append_message(conversation.roles[bot_role_ind], "")
+
+        # Create a copy of the conversation to avoid history truncation in the UI
+        conversation_copy = conversation.copy()
+        logger.info("=" * 80)
+        logger.info(get_prompt(conversation))
+
+        rounds = len(conversation.messages) // 2
+
+        for _ in range(rounds):
+            current_prompt = get_prompt(conversation)
+            # current_prompt = (
+            #     current_prompt.replace("</s>", "")
+            #     if sft_format == "deepseek"
+            #     else current_prompt
+            # )
+
+            # if current_prompt.count("<image_placeholder>") > 2:
+            #     for _ in range(len(conversation_copy.messages) - 2):
+            #         conversation_copy.messages.pop(0)
+            #     return conversation_copy
+            
+            # if torch.tensor(tokenizer.encode(current_prompt)).size(-1) <= max_length:
+            #     return conversation_copy
+
+            if len(conversation.messages) % 2 != 0:
+                gr.Error("The messages between user and assistant are not paired.")
+                return
+
+            try:
+                for _ in range(2):  # pop out two messages in a row
+                    conversation.messages.pop(0)
+            except IndexError:
+                gr.Error("Input text processing failed, unable to respond in this round.")
+                return None
+
+        gr.Error("Prompt could not be generated within max_length limit.")
+        return None
+
+    def to_gradio_chatbot(conv):
+        """Convert the conversation to gradio chatbot format."""
+        ret = []
+        for i, (role, msg) in enumerate(conv.messages[conv.offset :]):
+            if i % 2 == 0:
+    #             if type(msg) is tuple:
+    # #               msg, image = msg
+    #                 msg = msg
+    #                 if isinstance(image, str):
+    #                     with open(image, "rb") as f:
+    #                         data = f.read()
+    #                     img_b64_str = base64.b64encode(data).decode()
+    #                     image_str = f'<video src="data:video/mp4;base64,{img_b64_str}" controls width="426" height="240"></video>'
+    #                     msg = msg.replace("\n".join(["<image_placeholder>"] * 4), image_str)
+    #                 else:
+                #         max_hw, min_hw = max(image.size), min(image.size)
+                #         aspect_ratio = max_hw / min_hw
+                #         max_len, min_len = 800, 400
+                #         shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
+                #         longest_edge = int(shortest_edge * aspect_ratio)
+                #         W, H = image.size
+                #         if H > W:
+                #             H, W = longest_edge, shortest_edge
+                #         else:
+                #             H, W = shortest_edge, longest_edge
+                #         image = image.resize((W, H))
+                #         buffered = BytesIO()
+                #         image.save(buffered, format="JPEG")
+                #         img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                #         img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
+                #         msg = msg.replace("<image_placeholder>", img_str)
+                # ret.append([msg, None])
+            else:
+                ret[-1][-1] = msg
+        return ret
+    def to_gradio_history(conv):
+        """Convert the conversation to gradio history state."""
+        return conv.messages[conv.offset :]
+
+
+    def get_prompt(conv) -> str:
+        """Get the prompt for generation."""
+        system_prompt = conv.system_template.format(system_message=conv.system_message)
+        if conv.sep_style == SeparatorStyle.DeepSeek:
+            seps = [conv.sep, conv.sep2]
+            if system_prompt == "" or system_prompt is None:
+                ret = ""
+            else:
+                ret = system_prompt + seps[0]
+            for i, (role, message) in enumerate(conv.messages):
+                if message:
+                    if type(message) is tuple:  # multimodal message
+                        message, _ = message
+                    ret += role + ": " + message + seps[i % 2]
+                else:
+                    ret += role + ":"
+            return ret
+        else:
+            return conv.get_prompt
+
+    def predict(text, chatbot, history, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens, model_select_dropdown,):
+        """
+        Function to predict the response based on the user's input and selected model.
+        Parameters:
+        user_text (str): The input text from the user.
+        user_image (str): The input image from the user.
+        chatbot (str): The chatbot's name.
+        history (str): The history of the chat.
+        top_p (float): The top-p parameter for the model.
+        temperature (float): The temperature parameter for the model.
+        max_length_tokens (int): The maximum length of tokens for the model.
+        max_context_length_tokens (int): The maximum length of context tokens for the model.
+        model_select_dropdown (str): The selected model from the dropdown.
+        Returns:
+        generator: A generator that yields the chatbot outputs, history, and status.
+        """
+        print("running the prediction function")
+        # try:
+        #     tokenizer, vl_gpt, vl_chat_processor = models[model_select_dropdown]
+
+        #     if text == "":
+        #         yield chatbot, history, "Empty context."
+        #         return
+        # except KeyError:
+        #     yield [[text, "No Model Found"]], [], "No Model Found"
+        #     return
+
+        conversation = generate_prompt_with_history(
+            text,
+            image,
+            history,
+            max_length=max_context_length_tokens,
+        )
+        prompts = convert_conversation_to_prompts(conversation)
+        gradio_chatbot_output = to_gradio_chatbot(conversation)
+
+        # full_response = ""
+        # with torch.no_grad():
+        #     for x in deepseek_generate(
+        #         prompts=prompts,
+        #         vl_gpt=vl_gpt,
+        #         vl_chat_processor=vl_chat_processor,
+        #         tokenizer=tokenizer,
+        #         stop_words=stop_words,
+        #         max_length=max_length_tokens,
+        #         temperature=temperature,
+        #         repetition_penalty=repetition_penalty,
+        #         top_p=top_p,
+        #     ):
+        #         full_response += x
+        #         response = strip_stop_words(full_response, stop_words)
+        #         conversation.update_last_message(response)
+        #         gradio_chatbot_output[-1][1] = response
+        #         yield gradio_chatbot_output, to_gradio_history(
+        #             conversation
+        #         ),
+        "Generating..."
+
+        print("flushed result to gradio")
+        # torch.cuda.empty_cache()
+
+        # if is_variable_assigned("x"):
+        #     print(f"{model_select_dropdown}:\n{text}\n{'-' * 80}\n{x}\n{'=' * 80}")
+        #     print(
+        #         f"temperature: {temperature}, top_p: {top_p}, repetition_penalty: {repetition_penalty}, max_length_tokens: {max_length_tokens}"
+        #     )
+
+        yield gradio_chatbot_output, to_gradio_history(conversation), "Generate: Success"
+
+
+    def retry(
+        text,
+        image,
+        chatbot,
+        history,
+        top_p,
+        temperature,
+        repetition_penalty,
+        max_length_tokens,
+        max_context_length_tokens,
+        model_select_dropdown,
+    ):
+        if len(history) == 0:
+            yield (chatbot, history, "Empty context")
+            return
+
+        chatbot.pop()
+        history.pop()
+        text = history.pop()[-1]
+        if type(text) is tuple:
+            text, image = text
+
+        yield from predict(
+            text,
+            chatbot,
+            history,
+            top_p,
+            temperature,
+            repetition_penalty,
+            max_length_tokens,
+            max_context_length_tokens,
+            model_select_dropdown,
+        )
+
+class Application:
+    def __init__(self):
+        self.api_key_manager = APIKeyManager()
+        self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
+        self.claude_model_manager = ClaudeModelManager()
+        self.synthetic_data_handler = SyntheticDataHandler()
+        self.chatbot_manager = ChatbotManager()
+        
+    def set_api_keys(self, anthropic_api_key, openai_api_key):
+        return self.api_key_manager.set_api_keys(anthropic_api_key, openai_api_key)
+>>>>>>> Stashed changes
 
 
 
@@ -479,6 +722,7 @@ from llama_index.core.llama_pack import download_llama_pack
 # )
 # agent = AgentRunner(agent_worker, callback_manager=callback_manager)
 
+<<<<<<< Updated upstream
 # # start using the agent
 # response = agent.chat("What is (121 * 3) + 42?")
 # You can also use/initialize the pack directly.
@@ -508,3 +752,8 @@ from llama_index.core.llama_pack import download_llama_pack
 # file_extractor = {".pdf": parser}
 # documents = SimpleDirectoryReader("./data", file_extractor=file_extractor).load_data()
 
+=======
+if __name__ == "__main__":
+    app = Application()
+    app.main()
+>>>>>>> Stashed changes
