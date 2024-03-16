@@ -577,7 +577,3 @@ class Application:
 if __name__ == "__main__":
     app = Application()
     app.main()
-
-if __name__ == "__main__":
-    app = Application()
-    app.main()
