@@ -58,7 +58,7 @@ import dotenv
 from dotenv import load_dotenv, set_key
 from pathlib import Path
 
-from typing import Any
+from typing import Any, List, Dict
 
 
 # Define constants and configurations
@@ -351,7 +351,8 @@ class ClaudeModelManager:
             self.kwargs["model"] = model
             print(f"Model parameters set: {self.kwargs}")
 
-            self.history: List[dict[str, Any]] = []
+            # self.history: List[dict[str, Any]] = []
+            self.history = [] # changed to be commatible with older versions
             self.client = Anthropic(api_key=self.api_key)
             print("Anthropic client initialized.")
 
