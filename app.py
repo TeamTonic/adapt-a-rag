@@ -61,6 +61,9 @@ from pathlib import Path
 from typing import Any, List, Dict
 import base64
 
+import chromadb
+
+
 
 # Define constants and configurations
 NUM_THREADS = 4  # Example constant, adjust according to your actual configuration
@@ -190,11 +193,23 @@ class DataProcessor:
             raise ValueError(f"Unsupported source type: {self.source_file}")
 
         # Use the reader to load data
-        data = reader.read(self.source_file)  # Adjust method name as necessary
+        # data = reader.read(self.source_file)  # Adjust method name as necessary
+        data = reader.load_data(self.source_file)  # Adjust method name as necessary
+        
+        chroma_client = chromadb.Client()
+        collection = chroma_client.create_collection(name=self.collection_name)
+        
+        collection.add(
+                documents=[i.text for i in data], # the text fields
+                metadatas=[i.extra_info for i in data], # the metadata
+                ids=[i.doc_id for i in data], # the generated ids
+            )
+        
 
         # Store the data in ChromaDB
-        retriever_model = ChromadbRM(self.collection_name, self.persist_directory)
-        retriever_model(data)
+        # retriever_model = ChromadbRM(self.collection_name, self.persist_directory)
+        
+        # retriever_model(data)
 
         return data
 
@@ -781,7 +796,8 @@ class ChatbotManager:
 class Application:
     def __init__(self):
         self.api_key_manager = APIKeyManager()
-        self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
+        # self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
+        self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="your_files_here")
         self.claude_model_manager = ClaudeModelManager()
         self.synthetic_data_handler = SyntheticDataHandler()
         self.chatbot_manager = ChatbotManager()
@@ -844,10 +860,12 @@ class Application:
 
             with gr.Accordion("Chatbot") as chatbot_accordion:
                 text_input = gr.Textbox(label="Enter your question")
-                model_select = gr.Dropdown(label="Select Model", choices=list(self.chatbot_manager.models.keys()))
-                top_p_input = gr.Slider(label="Top-p", min_value=0.0, max_value=1.0, value=0.95, step=0.01)
-                temperature_input = gr.Slider(label="Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.01)
-                repetition_penalty_input = gr.Slider(label="Repetition Penalty", min_value=1.0, max_value=2.0, value=1.1, step=0.1)
+                # model_select = gr.Dropdown(label="Select Model", choices=list(self.chatbot_manager.models.keys()))
+                model_select = gr.Dropdown(label="Select Model", choices=[ClaudeModelManager(api_key=os.getenv("ANTHROPIC_API_KEY"))])
+                top_p_input = gr.Slider(label="Top-p", minimum=0.0, maximum=1.0, value=0.95, step=0.01)
+                # top_p_input = gr.Slider()
+                temperature_input = gr.Slider(label="Temperature", minimum=0.0, maximum=1.0, value=0.7, step=0.01)
+                repetition_penalty_input = gr.Slider(label="Repetition Penalty", minimum=1.0, maximum=2.0, value=1.1, step=0.1)
                 max_length_tokens_input = gr.Number(label="Max Length Tokens", value=2048)
                 max_context_length_tokens_input = gr.Number(label="Max Context Length Tokens", value=2048)
                 chatbot_output = gr.Chatbot(label="Chatbot Conversation")
