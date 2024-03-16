@@ -32,11 +32,23 @@ To set up Adapt-a-RAG, follow these steps:
 
 3. Configure the necessary API keys and environment variables.
       - edit .env.example
-      - add your keys and `seed prompts`
 
-4. Add your files the folder `add_your_files_here` ; supported formats : ...
+4. add your keys and `seed prompts`to a .env file
+   - open a file editor
+   - add the following text exactly:
+   ```
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+FIELDPROMPT=
+EXAMPLEPROMPT=
+DESCRIPTIONPROMPT=
+   ```
+   
+   - save the file name : `.env` in the same folder as app.py
 
-5. Run the application:
+5. Add your files the folder `add_your_files_here` ; supported formats : ...
+
+6. Run the application:
    ```
    python app.py
    ```

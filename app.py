@@ -63,8 +63,6 @@ import base64
 
 import chromadb
 
-
-
 # Define constants and configurations
 NUM_THREADS = 4  # Example constant, adjust according to your actual configuration
 RECOMPILE_INTO_MODEL_FROM_SCRATCH = False  # Example flag
@@ -883,7 +881,6 @@ if __name__ == "__main__":
     app = Application()
     app.main()
 
-
 # Example usage
 # source_file = "example.txt"  # Replace with your source file path
 # collection_name = "adapt-a-rag" #Need to be defined
@@ -891,3 +888,4 @@ if __name__ == "__main__":
 
 # loaded_data = load_data_from_source_and_store(source_file, collection_name="adapt-a-rag", persist_directory="/your_files_here")
 # print("Data loaded and stored successfully in ChromaDB.")
+
