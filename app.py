@@ -471,12 +471,28 @@ class ModelCompilationAndEnsemble:
 
 # # Select the first Claude model from the ensemble
 # claude_program = ensemble[0]
+    
+# Add this class definition to your app.py
+
+class ChatbotManager:
+    def __init__(self):
+        self.models = self.load_models()
+        self.history = []
+
+    def load_models(self):
+        pass
+        return models
+
+    def generate_response(self, text, image, model_select_dropdown, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens):
+        return gradio_chatbot_output, self.history, "Generate: Success"
+
 class Application:
     def __init__(self):
         self.api_key_manager = APIKeyManager()
         self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
         self.claude_model_manager = ClaudeModelManager()
         self.synthetic_data_handler = SyntheticDataHandler()
+        self.chatbot_manager = ChatbotManager()
         
     def set_api_keys(self, anthropic_api_key, openai_api_key):
         return self.api_key_manager.set_api_keys(anthropic_api_key, openai_api_key)
@@ -493,9 +509,12 @@ class Application:
         print ("Generated {sample_size} synthetic data items:\n{synthetic_data_str}")
         return synthetic_data
 
+    def handle_chatbot_interaction(self, text, model_select, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens):
+        chatbot_response, history, status = self.chatbot_manager.generate_response(text, None, model_select, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens)
+        return chatbot_response
     def main(self):
         with gr.Blocks() as demo:
-            with gr.Tab("API Keys"):
+            with gr.Accordion("API Keys", open=True) as api_keys_accordion:
                 with gr.Row():
                     anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", type="password")
                     openai_api_key_input = gr.Textbox(label="OpenAI API Key", type="password")
@@ -508,7 +527,7 @@ class Application:
                     outputs=confirmation_output
                 )
 
-            with gr.Tab("Upload Data"):
+            with gr.Accordion("Upload Data") as upload_data_accordion:
                 file_upload = gr.File(label="Upload Data File")
                 file_upload_button = gr.Button("Process Uploaded File")
                 file_upload_output = gr.Textbox()
@@ -519,7 +538,7 @@ class Application:
                     outputs=file_upload_output
                 )
 
-            with gr.Tab("Generate Synthetic Data"):
+            with gr.Accordion("Generate Synthetic Data") as generate_data_accordion:
                 schema_input = gr.Textbox(label="Schema Class Name")
                 sample_size_input = gr.Number(label="Sample Size", value=100)
                 synthetic_data_button = gr.Button("Generate Synthetic Data")
@@ -531,7 +550,28 @@ class Application:
                     outputs=synthetic_data_output
                 )
 
+            with gr.Accordion("Chatbot") as chatbot_accordion:
+                text_input = gr.Textbox(label="Enter your question")
+                model_select = gr.Dropdown(label="Select Model", choices=list(self.chatbot_manager.models.keys()))
+                top_p_input = gr.Slider(label="Top-p", min_value=0.0, max_value=1.0, value=0.95, step=0.01)
+                temperature_input = gr.Slider(label="Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.01)
+                repetition_penalty_input = gr.Slider(label="Repetition Penalty", min_value=1.0, max_value=2.0, value=1.1, step=0.1)
+                max_length_tokens_input = gr.Number(label="Max Length Tokens", value=2048)
+                max_context_length_tokens_input = gr.Number(label="Max Context Length Tokens", value=2048)
+                chatbot_output = gr.Chatbot(label="Chatbot Conversation")
+                submit_button = gr.Button("Submit")
+
+                submit_button.click(
+                    fn=self.handle_chatbot_interaction,
+                    inputs=[text_input, model_select, top_p_input, temperature_input, repetition_penalty_input, max_length_tokens_input, max_context_length_tokens_input],
+                    outputs=chatbot_output
+                )
+
         demo.launch()
+
+if __name__ == "__main__":
+    app = Application()
+    app.main()
 
 if __name__ == "__main__":
     app = Application()
