@@ -77,8 +77,6 @@ def handle_file_upload(uploaded_file):
     if uploaded_file is not None:
         return f"Uploaded file '{uploaded_file.name}' has been processed."
     return "No file was uploaded."
-
-
     
 from dspy.modules.anthropic import Claude
 anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
@@ -102,7 +100,7 @@ def choose_reader(file_path: str) -> Any:
 
 def load_documents_from_folder(folder_path: str) -> List[Document]:
     """Loads documents from files within a specified folder"""
-    
+    folder_path = "./add_your_files_here"
     documents = []
     for root, _, filenames in os.walk(folder_path):
         for filename in filenames:
