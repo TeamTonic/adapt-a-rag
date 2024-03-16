@@ -45,7 +45,7 @@ from pydantic import BaseModel
 import dspy
 import gradio as gr
 import dspy
-from dspy.retrieve import ChromadbRM
+from dspy.retrieve.chromadb_rm import ChromadbRM
 from dspy.evaluate import Evaluate
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
@@ -91,8 +91,8 @@ class DataProcessor:
         :return: Loaded data.
         """
         # Determine the file extension
-        if isinstance(source, str):
-            ext = os.path.splitext(source)[-1].lower()
+        if isinstance(self.source_file, str):
+            ext = os.path.splitext(self.source_file)[-1].lower()
         else:
             raise TypeError("Source must be a string (file path or URL).")
 
@@ -123,13 +123,13 @@ class DataProcessor:
             reader = RTFReader()
         elif ext == '.xml':
             reader = XMLReader()
-        elif source.startswith('http'):
+        elif self.source_file.startswith('http'):
             reader = AsyncWebPageReader()  # Simplified assumption for URLs
         else:
-            raise ValueError(f"Unsupported source type: {source}")
+            raise ValueError(f"Unsupported source type: {self.source_file}")
 
         # Use the reader to load data
-        data = reader.read(source)  # Adjust method name as necessary
+        data = reader.read(self.source_file)  # Adjust method name as necessary
 
         # Store the data in ChromaDB
         retriever_model = ChromadbRM(collection_name, persist_directory)
