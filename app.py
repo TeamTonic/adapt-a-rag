@@ -119,31 +119,37 @@ def set_api_keys(anthropic_api_key: str, openai_api_key: str):
     Function to securely set API keys by updating the .env file in the application's directory.
     This approach ensures that sensitive information is not hard-coded into the application.
     """
+    print("Setting API keys...")
     # Define the path to the .env file
     env_path = Path('.') / '.env'
     
+    print(f"Loading existing .env file from: {env_path}")
     # Load existing .env file or create one if it doesn't exist
     load_dotenv(dotenv_path=env_path, override=True)
     
+    print("Updating .env file with new API keys...")
     # Update the .env file with the new values
     set_key(env_path, "ANTHROPIC_API_KEY", anthropic_api_key)
     set_key(env_path, "OPENAI_API_KEY", openai_api_key)
+    
+    print("API keys updated successfully.")
     # Returns a confirmation without exposing the keys
-    return "API keys and prompts updated successfully in .env file. Please proceed with your operations."
-
-# set_api_keys("your_anthropic_api_key", "your_openai_api_key")
+    return "API keys updated successfully in .env file. Please proceed with your operations."
 
 def load_api_keys_and_prompts():
     """
     Loads API keys and prompts from an existing .env file into the application's environment.
     This function assumes the .env file is located in the same directory as the script.
     """
+    print("Loading API keys and prompts...")
     # Define the path to the .env file
     env_path = Path('.') / '.env'
     
+    print(f"Loading .env file from: {env_path}")
     # Load the .env file
     load_dotenv(dotenv_path=env_path)
     
+    print("Accessing variables from the environment...")
     # Access the variables from the environment
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -151,8 +157,8 @@ def load_api_keys_and_prompts():
     example_prompt = os.getenv("EXAMPLEPROMPT")
     description_prompt = os.getenv("DESCRIPTIONPROMPT")
     
-    # Optionally, print a confirmation or return the loaded values
     print("API keys and prompts loaded successfully.")
+    # Optionally, print a confirmation or return the loaded values
     return {
         "ANTHROPIC_API_KEY": anthropic_api_key,
         "OPENAI_API_KEY": openai_api_key,
@@ -160,8 +166,6 @@ def load_api_keys_and_prompts():
         "EXAMPLEPROMPT": example_prompt,
         "DESCRIPTIONPROMPT": description_prompt
     }
-
-    return readers.get(ext, None)
 
 def load_documents_from_folder(folder_path: str) -> List[Document]:
     """Loads documents from files within a specified folder"""
