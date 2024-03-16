@@ -35,6 +35,8 @@ from llama_index.readers.web import SitemapReader
 from llama_index.readers.web import TrafilaturaWebReader
 from llama_index.readers.web import UnstructuredURLLoader
 from llama_index.readers.web import WholeSiteReader
+
+from langchain_core.documents.base import Document
 ####LlamaParse
 import llama_parse
 from llama_parse import LlamaParse
@@ -55,6 +57,8 @@ import os
 import dotenv
 from dotenv import load_dotenv, set_key
 from pathlib import Path
+
+from typing import Any
 
 
 # Define constants and configurations
@@ -132,7 +136,7 @@ class DataProcessor:
         data = reader.read(self.source_file)  # Adjust method name as necessary
 
         # Store the data in ChromaDB
-        retriever_model = ChromadbRM(collection_name, persist_directory)
+        retriever_model = ChromadbRM(self.collection_name, self.persist_directory)
         retriever_model(data)
 
         return data
