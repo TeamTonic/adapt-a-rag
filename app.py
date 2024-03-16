@@ -95,6 +95,27 @@ def load_data_from_source(source: Union[str, dict]) -> Any:
 
     return data
 
+def choose_reader(file_path: str) -> Any:
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    readers = {
+        ".json": JSONFileReader(),
+        ".csv": CSVReader(),
+        ".docx": DocxReader(),
+        ".epub": EpubReader(),
+        ".flat": FlatReader(),  # This is an assumption; adjust based on actual reader
+        ".html": HTMLTagReader(),
+        ".hwp": HWPReader(),
+        ".ipynb": IPYNBReader(),
+        ".png": ImageReader(),  # Assuming generic image handling
+        ".jpg": ImageReader(),
+        ".jpeg": ImageReader(),
+        # Continue for all file types...
+    }
+
+    return readers.get(ext, None)
+
+
 
 import random
 from typing import List, Optional
