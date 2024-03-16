@@ -71,7 +71,7 @@ RECOMPILE_INTO_MODEL_FROM_SCRATCH = False  # Example flag
 
 ports = [7140, 7141, 7142, 7143, 7144, 7145]
 #llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
-colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
+# colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
 
 class DataProcessor:
     def __init__(self, source_file: str, collection_name: str, persist_directory: str):
@@ -136,13 +136,13 @@ class DataProcessor:
 
         return data
     
-    # Example usage
-source_file = "example.txt"  # Replace with your source file path
-collection_name = "example_collection" #Need to be defined
-persist_directory = "/path/to/persist/directory" #Need to be defined
+#     # Example usage
+# source_file = "example.txt"  # Replace with your source file path
+# collection_name = "adapt-a-rag" #Need to be defined
+# persist_directory = "/your_files_here" #Need to be defined
 
-loaded_data = load_data_from_source_and_store(source_file, collection_name, persist_directory)
-print("Data loaded and stored successfully in ChromaDB.")
+# loaded_data = load_data_from_source_and_store(source_file, collection_name="adapt-a-rag", persist_directory="/your_files_here")
+# print("Data loaded and stored successfully in ChromaDB.")
 class APIKeyManager:
 
     @staticmethod
@@ -231,17 +231,19 @@ class DocumentLoader:
 ### DSPY DATA GENERATOR
 
 class descriptionSignature(dspy.Signature):
-  # add self.env.prompts
-  field_name = dspy.InputField(desc=field_prompt)
-  example = dspy.InputField(desc=example_prompt)
-  description = dspy.OutputField(desc=description_prompt)
+    load_dotenv()
+    field_prompt = os.getenv('FIELDPROMPT', 'Default field prompt if not set')
+    example_prompt = os.getenv('EXAMPLEPROMPT', 'Default example prompt if not set')
+    description_prompt = os.getenv('DESCRIPTIONPROMPT', 'Default description prompt if not set')
+    field_name = dspy.InputField(desc=field_prompt)
+    example = dspy.InputField(desc=example_prompt)
+    description = dspy.OutputField(desc=description_prompt)
 
 class SyntheticDataGenerator:
     def __init__(self, schema_class: Optional[BaseModel] = None, examples: Optional[List[dspy.Example]] = None):
         self.schema_class = schema_class
         self.examples = examples
         print("SyntheticDataGenerator initialized.")
-
 
     def generate(self, sample_size: int) -> List[dspy.Example]:
         print(f"Starting data generation for sample size: {sample_size}")
