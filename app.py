@@ -41,7 +41,27 @@ from llama_index.readers.web import WholeSiteReader
 import llama_parse
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
+
+
+import random
+from typing import List, Optional
+
+from pydantic import BaseModel
+
+import dspy
+
+
 import gradio as gr
+
+
+import dspy
+from dspy.evaluate import Evaluate
+from dspy.datasets.hotpotqa import HotPotQA
+from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
+from dsp.modules.lm import LM
+
+from dsp.utils.utils import deduplicate
+
 
 def set_api_keys(anthropic_api_key: str, openai_api_key: str):
     """
@@ -123,15 +143,7 @@ def load_documents_from_folder(folder_path: str) -> List[Document]:
     ]                       
     return documents
 
-
-###RAGAS SUBTITUTION USING DSPY DATA GENERATOR
-import random
-from typing import List, Optional
-
-from pydantic import BaseModel
-
-import dspy
-
+### DSPY DATA GENERATOR
 
 class descriptionSignature(dspy.Signature):
   field_name = dspy.InputField(desc="name of a field")
@@ -187,6 +199,7 @@ class SyntheticDataGenerator:
             **{field_name: dspy.OutputField(desc=properties[field_name].get('description', 'No description'))
                for field_name in properties.keys()},
         }
+
 # Generating synthetic data via existing examples
 generator = SyntheticDataGenerator(examples=existing_examples)
 dataframe = generator.generate(sample_size=5)
@@ -197,12 +210,6 @@ dataframe = generator.generate(sample_size=5)
 
 # %set_env CUDA_VISIBLE_DEVICES=7
 # import sys; sys.path.append('/future/u/okhattab/repos/public/stanfordnlp/dspy')
-
-import dspy
-from dspy.evaluate import Evaluate
-from dspy.datasets.hotpotqa import HotPotQA
-from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
-from dsp.modules.lm import LM
 
 class Claude(LM):
     """Wrapper around anthropic's API. Supports both the Anthropic and Azure APIs."""
@@ -254,26 +261,6 @@ testset = [x.with_inputs('question') for x in dataset.test]
 
 #len(trainset), len(devset), len(testset)
 #trainset[0]
-
-from dsp.utils.utils import deduplicate
-
-#class BasicMH(dspy.Module):
-#    def __init__(self, passages_per_hop=3):
-#       super().__init__()
-
-#        self.retrieve = dspy.Retrieve(k=passages_per_hop)
-#        self.generate_query = [dspy.ChainOfThought("context, question -> search_query") for _ in range(2)]
-#        self.generate_answer = dspy.ChainOfThought("context, question -> answer")
-    
-#    def forward(self, question):
-#        context = []
-        
-#        for hop in range(2):
-#            search_query = self.generate_query[hop](context=context, question=question).search_query
-#            passages = self.retrieve(search_query).passages
-#            context = deduplicate(context + passages)
-
-#        return self.generate_answer(context=context, question=question).copy(context=context)
 
 class BasicMH(dspy.Module):
     def __init__(self, claude_model, passages_per_hop=3):
@@ -394,6 +381,24 @@ if __name__ == "__main__":
 
 
 
+
+#class BasicMH(dspy.Module):
+#    def __init__(self, passages_per_hop=3):
+#       super().__init__()
+
+#        self.retrieve = dspy.Retrieve(k=passages_per_hop)
+#        self.generate_query = [dspy.ChainOfThought("context, question -> search_query") for _ in range(2)]
+#        self.generate_answer = dspy.ChainOfThought("context, question -> answer")
+    
+#    def forward(self, question):
+#        context = []
+        
+#        for hop in range(2):
+#            search_query = self.generate_query[hop](context=context, question=question).search_query
+#            passages = self.retrieve(search_query).passages
+#            context = deduplicate(context + passages)
+
+#        return self.generate_answer(context=context, question=question).copy(context=context)
 
 
 
