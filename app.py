@@ -59,103 +59,112 @@ from llama_index.core import SimpleDirectoryReader
 
 # # async batch
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
+import gradio as gr
 
-import os
-from getpass import getpass
-
-# Function to interactively input API keys
-def input_api_keys():
-    anthropic_api_key = getpass("Enter your Anthropic API Key: ").strip()
-    openai_api_key = getpass("Enter your OpenAI API Key: ").strip()
-    return anthropic_api_key, openai_api_key
-    
-# Main function
-def main():
-    # Input API keys
-    anthropic_api_key, openai_api_key = input_api_keys()
-
-    # Set environment variables
+def set_api_keys(anthropic_api_key: str, openai_api_key: str):
+    """
+    Function to securely set API keys. This example prints a confirmation message
+    but in a real application, you should set environment variables, store them securely,
+    or directly authenticate with your services as needed.
+    """
+    # For demonstration purposes only. Replace with secure handling as needed.
     os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
     os.environ["OPENAI_API_KEY"] = openai_api_key
     
+    # Returns a confirmation without exposing the keys
+    return "API keys updated successfully. Please proceed with your operations."
+
+# Dummy backend function for handling user query
+def handle_query(user_query: str) -> str:
+    # Placeholder for processing user query
+    return f"Processed query: {user_query}"
+
+# Dummy backend function for handling repository input
+def handle_repository(repository_link: str) -> str:
+    # Placeholder for processing repository input
+    return f"Processed repository link: {repository_link}"
+
+# New dummy function for handling synthetic data generation
+def handle_synthetic_data(schema_class_name: str, sample_size: int) -> str:
+    # Placeholder for generating synthetic data based on the schema class name and sample size
+    return f"Synthetic data for schema '{schema_class_name}' with {sample_size} samples has been generated."
+
+# New dummy function for handling file uploads
+def handle_file_upload(uploaded_file):
+    # Placeholder for processing the uploaded file
+    if uploaded_file is not None:
+        return f"Uploaded file '{uploaded_file.name}' has been processed."
+    return "No file was uploaded."
+
+def main():
+    with gr.Blocks() as demo:
+        gr.Markdown("### Securely Input API Keys")
+        with gr.Row():
+            anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", placeholder="Enter your Anthropic API Key", type="password")
+            openai_api_key_input = gr.Textbox(label="OpenAI API Key", placeholder="Enter your OpenAI API Key", type="password")
+        submit_button = gr.Button("Submit")
+        confirmation_output = gr.Textbox(label="Confirmation", visible=False)  # Keep invisible for added security
+
+        submit_button.click(
+            fn=set_api_keys,
+            inputs=[anthropic_api_key_input, openai_api_key_input],
+            outputs=confirmation_output
+        )
+
+        with gr.Tab("User Query"):
+            with gr.Row():
+                user_query_input = gr.Textbox(label="Enter your query/prompt")
+            query_button = gr.Button("Submit Query")
+            query_output = gr.Textbox()
+
+            query_button.click(
+                fn=handle_query,
+                inputs=[user_query_input],
+                outputs=query_output
+            )
+
+        with gr.Tab("Repository Input"):
+            with gr.Row():
+                repository_link_input = gr.Textbox(label="Enter repository link")
+            repository_button = gr.Button("Process Repository")
+            repository_output = gr.Textbox()
+
+            repository_button.click(
+                fn=handle_repository,
+                inputs=[repository_link_input],
+                outputs=repository_output
+            )
+
+        with gr.Tab("Generate Synthetic Data"):
+            with gr.Row():
+                schema_input = gr.Textbox(label="Schema Class Name")
+                sample_size_input = gr.Number(label="Sample Size", value=100)
+            synthetic_data_button = gr.Button("Generate Synthetic Data")
+            synthetic_data_output = gr.Textbox()
+
+            synthetic_data_button.click(
+                fn=handle_synthetic_data,
+                inputs=[schema_input, sample_size_input],
+                outputs=synthetic_data_output
+            )
+
+        with gr.Tab("Process Data"):
+            with gr.Row():
+                file_upload = gr.File(label="Upload Data File")
+            file_upload_button = gr.Button("Process Uploaded File")
+            file_upload_output = gr.Textbox()
+
+            file_upload_button.click(
+                fn=handle_file_upload,
+                inputs=[file_upload],
+                outputs=file_upload_output
+            )
+
+    demo.launch()
+
 if __name__ == "__main__":
     main()
 
-from flask import Flask, render_template, request
-import os
-
-app = Flask(__name__)
-
-# Function to set environment variables from form inputs
-def set_environment_variables():
-    os.environ["ANTHROPIC_API_KEY"] = request.form.get("anthropic_api_key", "")
-    os.environ["OPENAI_API_KEY"] = request.form.get("openai_api_key", "")
-
-# Home page with form to input API keys
-@app.route("/", methods=["GET", "POST"])
-def home():
-    if request.method == "POST":
-        set_environment_variables()
-        return render_template("query_form.html")
-    return render_template("index.html")
-
-# Route for synthetic data generation form
-@app.route("/generate_data", methods=["GET", "POST"])
-def generate_data():
-    if request.method == "POST":
-        # Handle synthetic data generation here
-        # Access form inputs using request.form.get("input_name")
-        pass
-    return render_template("generate_data.html")
-
-# Route for RAG retrieval form
-@app.route("/rag_retrieval", methods=["GET", "POST"])
-def rag_retrieval():
-    if request.method == "POST":
-        # Handle RAG retrieval here
-        # Access file upload using request.files["file_name"]
-        pass
-    return render_template("rag_retrieval.html")
-
-if __name__ == "__main__":
-    app.run(debug=True)
-
-import gradio as gr
-# Create interface using Gradio
-interface = gr.Interface(
-    fn=home,
-    inputs=[
-        gr.inputs.Textbox(label="Anthropic API Key"),
-        gr.inputs.Textbox(label="OpenAI API Key"),
-    ],
-    outputs="text",
-    title="API Key Input Form",
-    description="Input your API keys for Anthropic and OpenAI.",
-    theme="default",
-)
-
-interface2 = gr.Interface(
-    fn=generate_data,
-    inputs=None,
-    outputs="text",
-    title="Synthetic Data Generation Form",
-    description="Form for generating synthetic data.",
-    theme="default",
-)
-
-interface3 = gr.Interface(
-    fn=rag_retrieval,
-    inputs=gr.inputs.File(label="Upload File"),
-    outputs="text",
-    title="RAG Retrieval Form",
-    description="Form for RAG retrieval.",
-    theme="default",
-)
-
-if __name__ == "__main__":
-    interface.launch()
-    interface2.launch()
-    interface3.launch()
 
     
 from dspy.modules.anthropic import Claude
