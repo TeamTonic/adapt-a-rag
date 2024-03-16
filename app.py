@@ -59,6 +59,7 @@ from dotenv import load_dotenv, set_key
 from pathlib import Path
 
 from typing import Any, List, Dict
+import base64
 
 
 # Define constants and configurations
@@ -77,6 +78,62 @@ RECOMPILE_INTO_MODEL_FROM_SCRATCH = False  # Example flag
 ports = [7140, 7141, 7142, 7143, 7144, 7145]
 #llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
 # colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
+class APIKeyManager:
+
+    @staticmethod
+    def set_api_keys(anthropic_api_key: str, openai_api_key: str):
+        """
+        Function to securely set API keys by updating the .env file in the application's directory.
+        This approach ensures that sensitive information is not hard-coded into the application.
+        """
+        print("Setting API keys...")
+        # Define the path to the .env file
+        env_path = Path('.') / '.env'
+        
+        print(f"Loading existing .env file from: {env_path}")
+        # Load existing .env file or create one if it doesn't exist
+        load_dotenv(dotenv_path=env_path, override=True)
+        
+        print("Updating .env file with new API keys...")
+        # Update the .env file with the new values
+        set_key(env_path, "ANTHROPIC_API_KEY", anthropic_api_key)
+        set_key(env_path, "OPENAI_API_KEY", openai_api_key)
+        
+        print("API keys updated successfully.")
+        # Returns a confirmation without exposing the keys
+        return "API keys updated successfully in .env file. Please proceed with your operations."
+
+    @staticmethod
+    def load_api_keys_and_prompts():
+        """
+        Loads API keys and prompts from an existing .env file into the application's environment.
+        This function assumes the .env file is located in the same directory as the script.
+        """
+        print("Loading API keys and prompts...")
+        # Define the path to the .env file
+        env_path = Path('.') / '.env'
+        
+        print(f"Loading .env file from: {env_path}")
+        # Load the .env file
+        load_dotenv(dotenv_path=env_path)
+        
+        print("Accessing variables from the environment...")
+        # Access the variables from the environment
+        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        field_prompt = os.getenv("FIELDPROMPT")
+        example_prompt = os.getenv("EXAMPLEPROMPT")
+        description_prompt = os.getenv("DESCRIPTIONPROMPT")
+        
+        print("API keys and prompts loaded successfully.")
+        # Optionally, print a confirmation or return the loaded values
+        return {
+            "ANTHROPIC_API_KEY": anthropic_api_key,
+            "OPENAI_API_KEY": openai_api_key,
+            "FIELDPROMPT": field_prompt,
+            "EXAMPLEPROMPT": example_prompt,
+            "DESCRIPTIONPROMPT": description_prompt
+        }
 
 class DataProcessor:
     def __init__(self, source_file: str, collection_name: str, persist_directory: str):
@@ -140,71 +197,57 @@ class DataProcessor:
         retriever_model(data)
 
         return data
+
+def choose_reader(full_path:str):
+    """
+    Loads data from various sources and stores the data in ChromaDB.
+
+    :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
+    """
+    # Determine the file extension
+    if isinstance(full_path, str):
+        ext = os.path.splitext(full_path)[-1].lower()
+    else:
+        raise TypeError("Source must be a string (file path or URL).")
     
-#     # Example usage
-# source_file = "example.txt"  # Replace with your source file path
-# collection_name = "adapt-a-rag" #Need to be defined
-# persist_directory = "/your_files_here" #Need to be defined
+    # Load data using appropriate reader
+    if ext == '.csv':
+        reader = CSVReader()
+    elif ext == '.docx':
+        reader = DocxReader()
+    elif ext == '.epub':
+        reader = EpubReader()
+    elif ext == '.html':
+        reader = HTMLTagReader()
+    elif ext == '.hwp':
+        reader = HWPReader()
+    elif ext == '.ipynb':
+        reader = IPYNBReader()
+    elif ext in ['.png', '.jpg', '.jpeg']:
+        reader = ImageReader()  # Assuming ImageReader can handle common image formats
+    elif ext == '.md':
+        reader = MarkdownReader()
+    elif ext == '.mbox':
+        reader = MboxReader()
+    elif ext == '.pdf':
+        reader = PDFReader()
+    elif ext == '.pptx':
+        reader = PptxReader()
+    elif ext == '.rtf':
+        reader = RTFReader()
+    elif ext == '.xml':
+        reader = XMLReader()
+    elif full_path.startswith('http'):
+        reader = AsyncWebPageReader()  # Simplified assumption for URLs
+    else:
+        raise ValueError(f"Unsupported source type: {full_path}")
 
-# loaded_data = load_data_from_source_and_store(source_file, collection_name="adapt-a-rag", persist_directory="/your_files_here")
-# print("Data loaded and stored successfully in ChromaDB.")
-class APIKeyManager:
-
-    @staticmethod
-    def set_api_keys(anthropic_api_key: str, openai_api_key: str):
-        """
-        Function to securely set API keys by updating the .env file in the application's directory.
-        This approach ensures that sensitive information is not hard-coded into the application.
-        """
-        print("Setting API keys...")
-        # Define the path to the .env file
-        env_path = Path('.') / '.env'
-        
-        print(f"Loading existing .env file from: {env_path}")
-        # Load existing .env file or create one if it doesn't exist
-        load_dotenv(dotenv_path=env_path, override=True)
-        
-        print("Updating .env file with new API keys...")
-        # Update the .env file with the new values
-        set_key(env_path, "ANTHROPIC_API_KEY", anthropic_api_key)
-        set_key(env_path, "OPENAI_API_KEY", openai_api_key)
-        
-        print("API keys updated successfully.")
-        # Returns a confirmation without exposing the keys
-        return "API keys updated successfully in .env file. Please proceed with your operations."
-
-    @staticmethod
-    def load_api_keys_and_prompts():
-        """
-        Loads API keys and prompts from an existing .env file into the application's environment.
-        This function assumes the .env file is located in the same directory as the script.
-        """
-        print("Loading API keys and prompts...")
-        # Define the path to the .env file
-        env_path = Path('.') / '.env'
-        
-        print(f"Loading .env file from: {env_path}")
-        # Load the .env file
-        load_dotenv(dotenv_path=env_path)
-        
-        print("Accessing variables from the environment...")
-        # Access the variables from the environment
-        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        field_prompt = os.getenv("FIELDPROMPT")
-        example_prompt = os.getenv("EXAMPLEPROMPT")
-        description_prompt = os.getenv("DESCRIPTIONPROMPT")
-        
-        print("API keys and prompts loaded successfully.")
-        # Optionally, print a confirmation or return the loaded values
-        return {
-            "ANTHROPIC_API_KEY": anthropic_api_key,
-            "OPENAI_API_KEY": openai_api_key,
-            "FIELDPROMPT": field_prompt,
-            "EXAMPLEPROMPT": example_prompt,
-            "DESCRIPTIONPROMPT": description_prompt
-        }
-
+    # Use the reader to load data
+    data = reader.read(full_path)  # Adjust method name as necessary
+    
+    return data
+    
+    
 class DocumentLoader:
 
     @staticmethod
@@ -217,6 +260,8 @@ class DocumentLoader:
                 full_path = os.path.join(root, filename)
                 
                 reader = choose_reader(full_path)
+                
+                x=0
 
                 if reader:
                     print(f"Loading document from '{filename}' with {type(reader).__name__}")
@@ -502,6 +547,237 @@ class ChatbotManager:
     def generate_response(self, text, image, model_select_dropdown, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens):
         return gradio_chatbot_output, self.history, "Generate: Success"
 
+    def generate_prompt_with_history( text, history, max_length=2048):
+        """
+        Generate a prompt with history for the deepseek application.
+        Args:
+            text (str): The text prompt.
+            history (list): List of previous conversation messages.
+            max_length (int): The maximum length of the prompt.
+        Returns:
+            tuple: A tuple containing the generated prompt, conversation, and conversation copy. If the prompt could not be generated within the max_length limit, returns None.
+        """
+        user_role_ind = 0
+        bot_role_ind = 1
+
+        # Initialize conversation
+        conversation = ""# ADD DSPY HERE vl_chat_processor.new_chat_template()
+
+        if history:
+            conversation.messages = history
+
+        # if image is not None:
+        #     if "<image_placeholder>" not in text:
+        #         text = (
+        #             "<image_placeholder>" + "\n" + text
+        #         )  # append the <image_placeholder> in a new line after the text prompt
+        #     text = (text, image)
+
+        conversation.append_message(conversation.roles[user_role_ind], text)
+        conversation.append_message(conversation.roles[bot_role_ind], "")
+
+        # Create a copy of the conversation to avoid history truncation in the UI
+        conversation_copy = conversation.copy()
+        logger.info("=" * 80)
+        logger.info(get_prompt(conversation))
+
+        rounds = len(conversation.messages) // 2
+
+        for _ in range(rounds):
+            current_prompt = get_prompt(conversation)
+            # current_prompt = (
+            #     current_prompt.replace("</s>", "")
+            #     if sft_format == "deepseek"
+            #     else current_prompt
+            # )
+
+            # if current_prompt.count("<image_placeholder>") > 2:
+            #     for _ in range(len(conversation_copy.messages) - 2):
+            #         conversation_copy.messages.pop(0)
+            #     return conversation_copy
+            
+            # if torch.tensor(tokenizer.encode(current_prompt)).size(-1) <= max_length:
+            #     return conversation_copy
+
+            if len(conversation.messages) % 2 != 0:
+                gr.Error("The messages between user and assistant are not paired.")
+                return
+
+            try:
+                for _ in range(2):  # pop out two messages in a row
+                    conversation.messages.pop(0)
+            except IndexError:
+                gr.Error("Input text processing failed, unable to respond in this round.")
+                return None
+
+        gr.Error("Prompt could not be generated within max_length limit.")
+        return None
+
+    def to_gradio_chatbot(conv):
+        """Convert the conversation to gradio chatbot format."""
+        ret = []
+        for i, (role, msg) in enumerate(conv.messages[conv.offset :]):
+            if i % 2 == 0:
+                if type(msg) is tuple:
+                    msg, image = msg
+                    msg = msg
+                    if isinstance(image, str):
+                        with open(image, "rb") as f:
+                            data = f.read()
+                        img_b64_str = base64.b64encode(data).decode()
+                        image_str = f'<video src="data:video/mp4;base64,{img_b64_str}" controls width="426" height="240"></video>'
+                        msg = msg.replace("\n".join(["<image_placeholder>"] * 4), image_str)
+                    else:
+                        max_hw, min_hw = max(image.size), min(image.size)
+                        aspect_ratio = max_hw / min_hw
+                        max_len, min_len = 800, 400
+                        shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
+                        longest_edge = int(shortest_edge * aspect_ratio)
+                        W, H = image.size
+                        if H > W:
+                            H, W = longest_edge, shortest_edge
+                        else:
+                            H, W = shortest_edge, longest_edge
+                        image = image.resize((W, H))
+                        buffered = BytesIO()
+                        image.save(buffered, format="JPEG")
+                        img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                        img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
+                        msg = msg.replace("<image_placeholder>", img_str)
+                ret.append([msg, None])
+            else:
+                ret[-1][-1] = msg
+        return ret
+    def to_gradio_history(conv):
+        """Convert the conversation to gradio history state."""
+        return conv.messages[conv.offset :]
+
+
+    def get_prompt(conv) -> str:
+        """Get the prompt for generation."""
+        system_prompt = conv.system_template.format(system_message=conv.system_message)
+        if conv.sep_style == SeparatorStyle.DeepSeek:
+            seps = [conv.sep, conv.sep2]
+            if system_prompt == "" or system_prompt is None:
+                ret = ""
+            else:
+                ret = system_prompt + seps[0]
+            for i, (role, message) in enumerate(conv.messages):
+                if message:
+                    if type(message) is tuple:  # multimodal message
+                        message, _ = message
+                    ret += role + ": " + message + seps[i % 2]
+                else:
+                    ret += role + ":"
+            return ret
+        else:
+            return conv.get_prompt
+
+    def predict(text, chatbot, history, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens, model_select_dropdown,):
+        """
+        Function to predict the response based on the user's input and selected model.
+        Parameters:
+        user_text (str): The input text from the user.
+        user_image (str): The input image from the user.
+        chatbot (str): The chatbot's name.
+        history (str): The history of the chat.
+        top_p (float): The top-p parameter for the model.
+        temperature (float): The temperature parameter for the model.
+        max_length_tokens (int): The maximum length of tokens for the model.
+        max_context_length_tokens (int): The maximum length of context tokens for the model.
+        model_select_dropdown (str): The selected model from the dropdown.
+        Returns:
+        generator: A generator that yields the chatbot outputs, history, and status.
+        """
+        print("running the prediction function")
+        # try:
+        #     tokenizer, vl_gpt, vl_chat_processor = models[model_select_dropdown]
+
+        #     if text == "":
+        #         yield chatbot, history, "Empty context."
+        #         return
+        # except KeyError:
+        #     yield [[text, "No Model Found"]], [], "No Model Found"
+        #     return
+
+        conversation = generate_prompt_with_history(
+            text,
+            image,
+            history,
+            max_length=max_context_length_tokens,
+        )
+        prompts = convert_conversation_to_prompts(conversation)
+        gradio_chatbot_output = to_gradio_chatbot(conversation)
+
+        # full_response = ""
+        # with torch.no_grad():
+        #     for x in deepseek_generate(
+        #         prompts=prompts,
+        #         vl_gpt=vl_gpt,
+        #         vl_chat_processor=vl_chat_processor,
+        #         tokenizer=tokenizer,
+        #         stop_words=stop_words,
+        #         max_length=max_length_tokens,
+        #         temperature=temperature,
+        #         repetition_penalty=repetition_penalty,
+        #         top_p=top_p,
+        #     ):
+        #         full_response += x
+        #         response = strip_stop_words(full_response, stop_words)
+        #         conversation.update_last_message(response)
+        #         gradio_chatbot_output[-1][1] = response
+        #         yield gradio_chatbot_output, to_gradio_history(
+        #             conversation
+        #         ),
+        "Generating..."
+
+        print("flushed result to gradio")
+        # torch.cuda.empty_cache()
+
+        # if is_variable_assigned("x"):
+        #     print(f"{model_select_dropdown}:\n{text}\n{'-' * 80}\n{x}\n{'=' * 80}")
+        #     print(
+        #         f"temperature: {temperature}, top_p: {top_p}, repetition_penalty: {repetition_penalty}, max_length_tokens: {max_length_tokens}"
+        #     )
+
+        yield gradio_chatbot_output, to_gradio_history(conversation), "Generate: Success"
+
+
+    def retry(
+        text,
+        image,
+        chatbot,
+        history,
+        top_p,
+        temperature,
+        repetition_penalty,
+        max_length_tokens,
+        max_context_length_tokens,
+        model_select_dropdown,
+    ):
+        if len(history) == 0:
+            yield (chatbot, history, "Empty context")
+            return
+
+        chatbot.pop()
+        history.pop()
+        text = history.pop()[-1]
+        if type(text) is tuple:
+            text, image = text
+
+        yield from predict(
+            text,
+            chatbot,
+            history,
+            top_p,
+            temperature,
+            repetition_penalty,
+            max_length_tokens,
+            max_context_length_tokens,
+            model_select_dropdown,
+        )
+
+
 class Application:
     def __init__(self):
         self.api_key_manager = APIKeyManager()
@@ -588,3 +864,12 @@ class Application:
 if __name__ == "__main__":
     app = Application()
     app.main()
+
+
+# Example usage
+# source_file = "example.txt"  # Replace with your source file path
+# collection_name = "adapt-a-rag" #Need to be defined
+# persist_directory = "/your_files_here" #Need to be defined
+
+# loaded_data = load_data_from_source_and_store(source_file, collection_name="adapt-a-rag", persist_directory="/your_files_here")
+# print("Data loaded and stored successfully in ChromaDB.")
