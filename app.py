@@ -277,16 +277,25 @@ class Claude(LM):
             api_base: Optional[str] = None,
             **kwargs,
     ):
+        print("Initializing Claude...")
         super().__init__(model)
 
         try:
             from anthropic import Anthropic, RateLimitError
+            print("Successfully imported Anthropics's API client.")
         except ImportError as err:
+            print("Failed to import Anthropics's API client.")
             raise ImportError("Claude requires `pip install anthropic`.") from err
         
         self.provider = "anthropic"
-        self.api_key = api_key = os.environ.get("ANTHROPIC_API_KEY") if api_key is None else api_key
+        self.api_key = os.environ.get("ANTHROPIC_API_KEY") if api_key is None else api_key
+        if self.api_key:
+            print("API key is set.")
+        else:
+            print("API key is not set. Please ensure it's provided or set in the environment variables.")
+        
         self.api_base = BASE_URL if api_base is None else api_base
+        print(f"API base URL is set to: {self.api_base}")
 
         self.kwargs = {
             "temperature": 0.0 if "temperature" not in kwargs else kwargs["temperature"],
@@ -297,8 +306,11 @@ class Claude(LM):
             **kwargs,
         }
         self.kwargs["model"] = model
-        self.history: list[dict[str, Any]] = []
-        self.client = Anthropic(api_key=api_key)
+        print(f"Model parameters set: {self.kwargs}")
+
+        self.history: List[dict[str, Any]] = []
+        self.client = Anthropic(api_key=self.api_key)
+        print("Anthropic client initialized.")
 
 ports = [7140, 7141, 7142, 7143, 7144, 7145]
 #llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
