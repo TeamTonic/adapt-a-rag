@@ -35,71 +35,73 @@ from llama_index.readers.web import SitemapReader
 from llama_index.readers.web import TrafilaturaWebReader
 from llama_index.readers.web import UnstructuredURLLoader
 from llama_index.readers.web import WholeSiteReader
-
-
 ##LlamaParse
 import llama_parse
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
-
-
 import random
 from typing import List, Optional
-
 from pydantic import BaseModel
-
 import dspy
-
-
 import gradio as gr
-
-
 import dspy
 from dspy.evaluate import Evaluate
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
 from dsp.modules.lm import LM
-
 from dsp.utils.utils import deduplicate
-
+import os
+import dotenv
+from dotenv import load_dotenv, set_key
+from pathlib import Path
 
 def set_api_keys(anthropic_api_key: str, openai_api_key: str):
     """
-    Function to securely set API keys. This example prints a confirmation message
-    but in a real application, you should set environment variables, store them securely,
-    or directly authenticate with your services as needed.
+    Function to securely set API keys by updating the .env file in the application's directory.
+    This approach ensures that sensitive information is not hard-coded into the application.
     """
-    # For demonstration purposes only. Replace with secure handling as needed.
-    os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
-    os.environ["OPENAI_API_KEY"] = openai_api_key
+    # Define the path to the .env file
+    env_path = Path('.') / '.env'
     
+    # Load existing .env file or create one if it doesn't exist
+    load_dotenv(dotenv_path=env_path, override=True)
+    
+    # Update the .env file with the new values
+    set_key(env_path, "ANTHROPIC_API_KEY", anthropic_api_key)
+    set_key(env_path, "OPENAI_API_KEY", openai_api_key)
     # Returns a confirmation without exposing the keys
-    return "API keys updated successfully. Please proceed with your operations."
+    return "API keys and prompts updated successfully in .env file. Please proceed with your operations."
 
-# Dummy backend function for handling user query
-def handle_query(user_query: str) -> str:
-    # Placeholder for processing user query
-    return f"Processed query: {user_query}"
+# set_api_keys("your_anthropic_api_key", "your_openai_api_key")
 
-# Dummy backend function for handling repository input
-def handle_repository(repository_link: str) -> str:
-    # Placeholder for processing repository input
-    return f"Processed repository link: {repository_link}"
-
-# New dummy function for handling synthetic data generation
-def handle_synthetic_data(schema_class_name: str, sample_size: int) -> str:
-    # Placeholder for generating synthetic data based on the schema class name and sample size
-    return f"Synthetic data for schema '{schema_class_name}' with {sample_size} samples has been generated."
-
-# New dummy function for handling file uploads
-def handle_file_upload(uploaded_file):
-    # Placeholder for processing the uploaded file
-    if uploaded_file is not None:
-        return f"Uploaded file '{uploaded_file.name}' has been processed."
-    return "No file was uploaded."
+def load_api_keys_and_prompts():
+    """
+    Loads API keys and prompts from an existing .env file into the application's environment.
+    This function assumes the .env file is located in the same directory as the script.
+    """
+    # Define the path to the .env file
+    env_path = Path('.') / '.env'
     
-from dspy.modules.anthropic import Claude
-anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
+    # Load the .env file
+    load_dotenv(dotenv_path=env_path)
+    
+    # Access the variables from the environment
+    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    field_prompt = os.getenv("FIELDPROMPT")
+    example_prompt = os.getenv("EXAMPLEPROMPT")
+    description_prompt = os.getenv("DESCRIPTIONPROMPT")
+    
+    # Optionally, print a confirmation or return the loaded values
+    print("API keys and prompts loaded successfully.")
+    return {
+        "ANTHROPIC_API_KEY": anthropic_api_key,
+        "OPENAI_API_KEY": openai_api_key,
+        "FIELDPROMPT": field_prompt,
+        "EXAMPLEPROMPT": example_prompt,
+        "DESCRIPTIONPROMPT": description_prompt
+    }
+
 
 def choose_reader(file_path: str) -> Any:
     """Choose the appropriate reader based on the file extension."""
@@ -146,9 +148,9 @@ def load_documents_from_folder(folder_path: str) -> List[Document]:
 ### DSPY DATA GENERATOR
 
 class descriptionSignature(dspy.Signature):
-  field_name = dspy.InputField(desc="name of a field")
-  example = dspy.InputField(desc="an example value for the field")
-  description = dspy.OutputField(desc="a short text only description of what the field contains")
+  field_name = dspy.InputField(desc=field_prompt)
+  example = dspy.InputField(desc=example_prompt)
+  description = dspy.OutputField(desc="description_prompt")
 
 class SyntheticDataGenerator:
     def __init__(self, schema_class: Optional[BaseModel] = None, examples: Optional[List[dspy.Example]] = None):
