@@ -357,86 +357,140 @@ class SyntheticDataHandler:
     def generate_data(self, sample_size: int):
         return self.generator.generate(sample_size=sample_size)
 
-# Instantiate Claude with desired parameters
-claude_model = Claude(model="claude-3-opus-20240229")
 
-# Configure dspy settings with Claude as the language model
-dspy.settings.configure(rm=colbertv2, lm=claude_model)
-#dspy.settings.configure(rm=colbertv2, lm=llamaChat) #Llama change into model based on line 166
+class ClaudeModelConfig:
+    def __init__(self, model_name):
+        self.model = model_name
 
-dataset = dataframe
-trainset = [x.with_inputs('question') for x in dataset.train]
-devset = [x.with_inputs('question') for x in dataset.dev]
-testset = [x.with_inputs('question') for x in dataset.test]
+    def get_model(self):
+        return Claude(model=self.model)
 
-#len(trainset), len(devset), len(testset)
-#trainset[0]
+def configure_dspy_settings(lm_model):
+    dspy.settings.configure(rm=colbertv2, lm=lm_model)
+
+class DatasetPreparation:
+    @staticmethod
+    def prepare_datasets(dataset):
+        trainset = [x.with_inputs('question') for x in dataset.train]
+        devset = [x.with_inputs('question') for x in dataset.dev]
+        testset = [x.with_inputs('question') for x in dataset.test]
+        return trainset, devset, testset
 
 class BasicMH(dspy.Module):
     def __init__(self, claude_model, passages_per_hop=3):
         super().__init__()
-
         self.claude_model = claude_model
         self.passages_per_hop = passages_per_hop
     
     def forward(self, question):
         context = []
-        
         for hop in range(2):
-            # Retrieval using Claude model
             search_results = self.claude_model.search(question, context=context, k=self.passages_per_hop)
             passages = [result.passage for result in search_results]
-            context = deduplicate(context + passages)
-
-        # Generation using Claude model
+            context = self.deduplicate(context + passages)
         answer = self.claude_model.generate(context=context, question=question)
-
         return answer
 
-metric_EM = dspy.evaluate.answer_exact_match
+    @staticmethod
+    def deduplicate(passages):
+        return list(dict.fromkeys(passages))
 
-if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
-    tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
-    # Compile the Claude model using BootstrapFewShotWithRandomSearch
-    claude_bs = tp.compile(Claude(), trainset=trainset[:50], valset=trainset[50:200])
+class ModelCompilationAndEnsemble:
+    @staticmethod
+    def compile_or_load_models(recompile, trainset, num_models=4):
+        ensemble = []
+        if recompile:
+            metric_EM = dspy.evaluate.answer_exact_match
+            tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
+            claude_bs = tp.compile(Claude(), trainset=trainset[:50], valset=trainset[50:200])
+            ensemble = [prog for *_, prog in claude_bs.candidate_programs[:num_models]]
+        else:
+            for idx in range(num_models):
+                claude_model = Claude(model=f'multihop_claude3opus_{idx}.json')
+                ensemble.append(claude_model)
+        return ensemble
 
-    # Get the compiled programs
-    ensemble = [prog for *_, prog in claude_bs.candidate_programs[:4]]
+# # # Instantiate Claude with desired parameters
+# # claude_model = Claude(model="claude-3-opus-20240229")
 
-    for idx, prog in enumerate(ensemble):
-        # Save the compiled Claude models if needed
-        # prog.save(f'multihop_llama213b_{idx}.json')
-        pass
-else:
-    ensemble = []
+# # # Configure dspy settings with Claude as the language model
+# # dspy.settings.configure(rm=colbertv2, lm=claude_model)
+# # #dspy.settings.configure(rm=colbertv2, lm=llamaChat) #Llama change into model based on line 166
 
-    for idx in range(4):
-        # Load the previously trained Claude models
-        claude_model = Claude(model=f'multihop_claude3opus_{idx}.json') #need to prepare this .json file
-        ensemble.append(claude_model)
+# # dataset = dataframe
+# # trainset = [x.with_inputs('question') for x in dataset.train]
+# # devset = [x.with_inputs('question') for x in dataset.dev]
+# # testset = [x.with_inputs('question') for x in dataset.test]
 
-# Select the first Claude model from the ensemble
-claude_program = ensemble[0]
+# # #len(trainset), len(devset), len(testset)
+# # #trainset[0]
+
+# class BasicMH(dspy.Module):
+#     def __init__(self, claude_model, passages_per_hop=3):
+#         super().__init__()
+
+#         self.claude_model = claude_model
+#         self.passages_per_hop = passages_per_hop
+    
+#     def forward(self, question):
+#         context = []
+        
+#         for hop in range(2):
+#             # Retrieval using Claude model
+#             search_results = self.claude_model.search(question, context=context, k=self.passages_per_hop)
+#             passages = [result.passage for result in search_results]
+#             context = deduplicate(context + passages)
+
+#         # Generation using Claude model
+#         answer = self.claude_model.generate(context=context, question=question)
+
+#         return answer
+
+# metric_EM = dspy.evaluate.answer_exact_match
+
+# if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
+#     tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
+#     # Compile the Claude model using BootstrapFewShotWithRandomSearch
+#     claude_bs = tp.compile(Claude(), trainset=trainset[:50], valset=trainset[50:200])
+
+#     # Get the compiled programs
+#     ensemble = [prog for *_, prog in claude_bs.candidate_programs[:4]]
+
+#     for idx, prog in enumerate(ensemble):
+#         # Save the compiled Claude models if needed
+#         # prog.save(f'multihop_llama213b_{idx}.json')
+#         pass
+# else:
+#     ensemble = []
+
+#     for idx in range(4):
+#         # Load the previously trained Claude models
+#         claude_model = Claude(model=f'multihop_claude3opus_{idx}.json') #need to prepare this .json file
+#         ensemble.append(claude_model)
+
+# # Select the first Claude model from the ensemble
+# claude_program = ensemble[0]
 class Application:
     def __init__(self):
         self.api_key_manager = APIKeyManager()
-        self.data_processor = DataProcessor(source_file="", collection_name="", persist_directory="")
+        self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
         self.claude_model_manager = ClaudeModelManager()
         self.synthetic_data_handler = SyntheticDataHandler()
         
-
     def set_api_keys(self, anthropic_api_key, openai_api_key):
         return self.api_key_manager.set_api_keys(anthropic_api_key, openai_api_key)
 
     def handle_file_upload(self, uploaded_file):
         self.data_processor.source_file = uploaded_file.name
         loaded_data = self.data_processor.load_data_from_source_and_store()
-        return f"Data from {uploaded_file.name} loaded and stored successfully."
+        print("Data from {uploaded_file.name} loaded and stored successfully.")
+        return loaded_data
 
     def handle_synthetic_data(self, schema_class_name, sample_size):
         synthetic_data = self.synthetic_data_handler.generate_data(sample_size=int(sample_size))
         synthetic_data_str = "\n".join([str(data) for data in synthetic_data])
-        return f"Generated {sample_size} synthetic data items:\n{synthetic_data_str}"
+        print ("Generated {sample_size} synthetic data items:\n{synthetic_data_str}")
+        return synthetic_data
 
     def main(self):
         with gr.Blocks() as demo:
