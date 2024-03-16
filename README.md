@@ -31,6 +31,8 @@ To set up Adapt-a-RAG, follow these steps:
    ```
 
 3. Configure the necessary API keys and environment variables.
+      - edit .env.example
+      - add your keys and `seed prompts`
 
 4. Add your files the folder `add_your_files_here` ; supported formats : ...
 
