@@ -35,6 +35,8 @@ from llama_index.readers.web import SitemapReader
 from llama_index.readers.web import TrafilaturaWebReader
 from llama_index.readers.web import UnstructuredURLLoader
 from llama_index.readers.web import WholeSiteReader
+
+from langchain_core.documents.base import Document
 ####LlamaParse
 import llama_parse
 from llama_parse import LlamaParse
@@ -45,7 +47,7 @@ from pydantic import BaseModel
 import dspy
 import gradio as gr
 import dspy
-from dspy.retrieve import chromadb_rm as ChromadbRM
+from dspy.retrieve.chromadb_rm import ChromadbRM
 from dspy.evaluate import Evaluate
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
@@ -55,6 +57,11 @@ import os
 import dotenv
 from dotenv import load_dotenv, set_key
 from pathlib import Path
+
+from typing import Any, List, Dict
+import base64
+
+import chromadb
 
 # Define constants and configurations
 NUM_THREADS = 4  # Example constant, adjust according to your actual configuration
@@ -72,77 +79,6 @@ RECOMPILE_INTO_MODEL_FROM_SCRATCH = False  # Example flag
 ports = [7140, 7141, 7142, 7143, 7144, 7145]
 #llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
 # colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
-
-class DataProcessor:
-    def __init__(self, source_file: str, collection_name: str, persist_directory: str):
-        self.source_file = source_file
-        self.collection_name = collection_name
-        self.persist_directory = persist_directory
-
-    def load_data_from_source_and_store(self) -> Any:
-    # def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
-        """
-        Loads data from various sources and stores the data in ChromaDB.
-
-        :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
-        :param collection_name: Name of the ChromaDB collection to store the data.
-        :param persist_directory: Path to the directory where ChromaDB data will be persisted.
-        :return: Loaded data.
-        """
-        # Determine the file extension
-        if isinstance(source, str):
-            ext = os.path.splitext(source)[-1].lower()
-        else:
-            raise TypeError("Source must be a string (file path or URL).")
-
-        # Load data using appropriate reader
-        if ext == '.csv':
-            reader = CSVReader()
-        elif ext == '.docx':
-            reader = DocxReader()
-        elif ext == '.epub':
-            reader = EpubReader()
-        elif ext == '.html':
-            reader = HTMLTagReader()
-        elif ext == '.hwp':
-            reader = HWPReader()
-        elif ext == '.ipynb':
-            reader = IPYNBReader()
-        elif ext in ['.png', '.jpg', '.jpeg']:
-            reader = ImageReader()  # Assuming ImageReader can handle common image formats
-        elif ext == '.md':
-            reader = MarkdownReader()
-        elif ext == '.mbox':
-            reader = MboxReader()
-        elif ext == '.pdf':
-            reader = PDFReader()
-        elif ext == '.pptx':
-            reader = PptxReader()
-        elif ext == '.rtf':
-            reader = RTFReader()
-        elif ext == '.xml':
-            reader = XMLReader()
-        elif source.startswith('http'):
-            reader = AsyncWebPageReader()  # Simplified assumption for URLs
-        else:
-            raise ValueError(f"Unsupported source type: {source}")
-
-        # Use the reader to load data
-        data = reader.read(source)  # Adjust method name as necessary
-
-        # Store the data in ChromaDB
-        retriever_model = ChromadbRM(collection_name, persist_directory)
-        retriever_model(data)
-
-        return data
-    
-#     # Example usage
-# source_file = "example.txt"  # Replace with your source file path
-# collection_name = "adapt-a-rag" #Need to be defined
-# persist_directory = "/your_files_here" #Need to be defined
-
-# loaded_data = load_data_from_source_and_store(source_file, collection_name="adapt-a-rag", persist_directory="/your_files_here")
-# print("Data loaded and stored successfully in ChromaDB.")
 class APIKeyManager:
 
     @staticmethod
@@ -200,6 +136,131 @@ class APIKeyManager:
             "DESCRIPTIONPROMPT": description_prompt
         }
 
+class DataProcessor:
+    def __init__(self, source_file: str, collection_name: str, persist_directory: str):
+        self.source_file = source_file
+        self.collection_name = collection_name
+        self.persist_directory = persist_directory
+
+    def load_data_from_source_and_store(self) -> Any:
+    # def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
+        """
+        Loads data from various sources and stores the data in ChromaDB.
+
+        :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
+        :param collection_name: Name of the ChromaDB collection to store the data.
+        :param persist_directory: Path to the directory where ChromaDB data will be persisted.
+        :return: Loaded data.
+        """
+        # Determine the file extension
+        if isinstance(self.source_file, str):
+            ext = os.path.splitext(self.source_file)[-1].lower()
+        else:
+            raise TypeError("Source must be a string (file path or URL).")
+
+        # Load data using appropriate reader
+        if ext == '.csv':
+            reader = CSVReader()
+        elif ext == '.docx':
+            reader = DocxReader()
+        elif ext == '.epub':
+            reader = EpubReader()
+        elif ext == '.html':
+            reader = HTMLTagReader()
+        elif ext == '.hwp':
+            reader = HWPReader()
+        elif ext == '.ipynb':
+            reader = IPYNBReader()
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            reader = ImageReader()  # Assuming ImageReader can handle common image formats
+        elif ext == '.md':
+            reader = MarkdownReader()
+        elif ext == '.mbox':
+            reader = MboxReader()
+        elif ext == '.pdf':
+            reader = PDFReader()
+        elif ext == '.pptx':
+            reader = PptxReader()
+        elif ext == '.rtf':
+            reader = RTFReader()
+        elif ext == '.xml':
+            reader = XMLReader()
+        elif self.source_file.startswith('http'):
+            reader = AsyncWebPageReader()  # Simplified assumption for URLs
+        else:
+            raise ValueError(f"Unsupported source type: {self.source_file}")
+
+        # Use the reader to load data
+        # data = reader.read(self.source_file)  # Adjust method name as necessary
+        data = reader.load_data(self.source_file)  # Adjust method name as necessary
+        
+        chroma_client = chromadb.Client()
+        collection = chroma_client.create_collection(name=self.collection_name)
+        
+        collection.add(
+                documents=[i.text for i in data], # the text fields
+                metadatas=[i.extra_info for i in data], # the metadata
+                ids=[i.doc_id for i in data], # the generated ids
+            )
+        
+
+        # Store the data in ChromaDB
+        # retriever_model = ChromadbRM(self.collection_name, self.persist_directory)
+        
+        # retriever_model(data)
+
+        return data
+
+def choose_reader(full_path:str):
+    """
+    Loads data from various sources and stores the data in ChromaDB.
+
+    :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
+    """
+    # Determine the file extension
+    if isinstance(full_path, str):
+        ext = os.path.splitext(full_path)[-1].lower()
+    else:
+        raise TypeError("Source must be a string (file path or URL).")
+    
+    # Load data using appropriate reader
+    if ext == '.csv':
+        reader = CSVReader()
+    elif ext == '.docx':
+        reader = DocxReader()
+    elif ext == '.epub':
+        reader = EpubReader()
+    elif ext == '.html':
+        reader = HTMLTagReader()
+    elif ext == '.hwp':
+        reader = HWPReader()
+    elif ext == '.ipynb':
+        reader = IPYNBReader()
+    elif ext in ['.png', '.jpg', '.jpeg']:
+        reader = ImageReader()  # Assuming ImageReader can handle common image formats
+    elif ext == '.md':
+        reader = MarkdownReader()
+    elif ext == '.mbox':
+        reader = MboxReader()
+    elif ext == '.pdf':
+        reader = PDFReader()
+    elif ext == '.pptx':
+        reader = PptxReader()
+    elif ext == '.rtf':
+        reader = RTFReader()
+    elif ext == '.xml':
+        reader = XMLReader()
+    elif full_path.startswith('http'):
+        reader = AsyncWebPageReader()  # Simplified assumption for URLs
+    else:
+        raise ValueError(f"Unsupported source type: {full_path}")
+
+    # Use the reader to load data
+    data = reader.read(full_path)  # Adjust method name as necessary
+    
+    return data
+    
+    
 class DocumentLoader:
 
     @staticmethod
@@ -212,6 +273,8 @@ class DocumentLoader:
                 full_path = os.path.join(root, filename)
                 
                 reader = choose_reader(full_path)
+                
+                x=0
 
                 if reader:
                     print(f"Loading document from '{filename}' with {type(reader).__name__}")
@@ -230,14 +293,25 @@ class DocumentLoader:
 
 ### DSPY DATA GENERATOR
 
-class descriptionSignature(dspy.Signature):
-    load_dotenv()
-    field_prompt = os.getenv('FIELDPROMPT', 'Default field prompt if not set')
-    example_prompt = os.getenv('EXAMPLEPROMPT', 'Default example prompt if not set')
-    description_prompt = os.getenv('DESCRIPTIONPROMPT', 'Default description prompt if not set')
-    field_name = dspy.InputField(desc=field_prompt)
-    example = dspy.InputField(desc=example_prompt)
-    description = dspy.OutputField(desc=description_prompt)
+# class descriptionSignature(dspy.Signature):
+#     load_dotenv()
+#     field_prompt = os.getenv('FIELDPROMPT', 'Default field prompt if not set')
+#     example_prompt = os.getenv('EXAMPLEPROMPT', 'Default example prompt if not set')
+#     description_prompt = os.getenv('DESCRIPTIONPROMPT', 'Default description prompt if not set')
+#     field_name = dspy.InputField(desc=field_prompt)
+#     example = dspy.InputField(desc=example_prompt)
+#     description = dspy.OutputField(desc=description_prompt)
+    
+load_dotenv()
+
+# https://github.com/stanfordnlp/dspy?tab=readme-ov-file#4-two-powerful-concepts-signatures--teleprompters
+class DescriptionSignature(dspy.Signature):
+    """Write a simple search query that will help answer a complex question."""
+
+    context = dspy.InputField(desc="may contain relevant facts")
+    question = dspy.InputField()
+    query = dspy.OutputField()
+
 
 class SyntheticDataGenerator:
     def __init__(self, schema_class: Optional[BaseModel] = None, examples: Optional[List[dspy.Example]] = None):
@@ -266,7 +340,7 @@ class SyntheticDataGenerator:
             properties = data_schema['properties']
         elif self.examples:
             inferred_schema = self.examples[0].__dict__['_store']
-            descriptor = dspy.Predict(descriptionSignature)
+            descriptor = dspy.Predict(DescriptionSignature)
             properties = {field: {'description': str((descriptor(field_name=field, example=str(inferred_schema[field]))).description)}
                           for field in inferred_schema.keys()}
         else:
@@ -346,7 +420,8 @@ class ClaudeModelManager:
             self.kwargs["model"] = model
             print(f"Model parameters set: {self.kwargs}")
 
-            self.history: List[dict[str, Any]] = []
+            # self.history: List[dict[str, Any]] = []
+            self.history = [] # changed to be commatible with older versions
             self.client = Anthropic(api_key=self.api_key)
             print("Anthropic client initialized.")
 
@@ -480,15 +555,247 @@ class ChatbotManager:
 
     def load_models(self):
         pass
-        return models
+        # return models
 
     def generate_response(self, text, image, model_select_dropdown, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens):
         return gradio_chatbot_output, self.history, "Generate: Success"
 
+    def generate_prompt_with_history( text, history, max_length=2048):
+        """
+        Generate a prompt with history for the deepseek application.
+        Args:
+            text (str): The text prompt.
+            history (list): List of previous conversation messages.
+            max_length (int): The maximum length of the prompt.
+        Returns:
+            tuple: A tuple containing the generated prompt, conversation, and conversation copy. If the prompt could not be generated within the max_length limit, returns None.
+        """
+        user_role_ind = 0
+        bot_role_ind = 1
+
+        # Initialize conversation
+        conversation = ""# ADD DSPY HERE vl_chat_processor.new_chat_template()
+
+        if history:
+            conversation.messages = history
+
+        # if image is not None:
+        #     if "<image_placeholder>" not in text:
+        #         text = (
+        #             "<image_placeholder>" + "\n" + text
+        #         )  # append the <image_placeholder> in a new line after the text prompt
+        #     text = (text, image)
+
+        conversation.append_message(conversation.roles[user_role_ind], text)
+        conversation.append_message(conversation.roles[bot_role_ind], "")
+
+        # Create a copy of the conversation to avoid history truncation in the UI
+        conversation_copy = conversation.copy()
+        logger.info("=" * 80)
+        logger.info(get_prompt(conversation))
+
+        rounds = len(conversation.messages) // 2
+
+        for _ in range(rounds):
+            current_prompt = get_prompt(conversation)
+            # current_prompt = (
+            #     current_prompt.replace("</s>", "")
+            #     if sft_format == "deepseek"
+            #     else current_prompt
+            # )
+
+            # if current_prompt.count("<image_placeholder>") > 2:
+            #     for _ in range(len(conversation_copy.messages) - 2):
+            #         conversation_copy.messages.pop(0)
+            #     return conversation_copy
+            
+            # if torch.tensor(tokenizer.encode(current_prompt)).size(-1) <= max_length:
+            #     return conversation_copy
+
+            if len(conversation.messages) % 2 != 0:
+                gr.Error("The messages between user and assistant are not paired.")
+                return
+
+            try:
+                for _ in range(2):  # pop out two messages in a row
+                    conversation.messages.pop(0)
+            except IndexError:
+                gr.Error("Input text processing failed, unable to respond in this round.")
+                return None
+
+        gr.Error("Prompt could not be generated within max_length limit.")
+        return None
+
+    def to_gradio_chatbot(conv):
+        """Convert the conversation to gradio chatbot format."""
+        ret = []
+        for i, (role, msg) in enumerate(conv.messages[conv.offset :]):
+            if i % 2 == 0:
+                if type(msg) is tuple:
+                    msg, image = msg
+                    msg = msg
+                    if isinstance(image, str):
+                        with open(image, "rb") as f:
+                            data = f.read()
+                        img_b64_str = base64.b64encode(data).decode()
+                        image_str = f'<video src="data:video/mp4;base64,{img_b64_str}" controls width="426" height="240"></video>'
+                        msg = msg.replace("\n".join(["<image_placeholder>"] * 4), image_str)
+                    else:
+                        max_hw, min_hw = max(image.size), min(image.size)
+                        aspect_ratio = max_hw / min_hw
+                        max_len, min_len = 800, 400
+                        shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
+                        longest_edge = int(shortest_edge * aspect_ratio)
+                        W, H = image.size
+                        if H > W:
+                            H, W = longest_edge, shortest_edge
+                        else:
+                            H, W = shortest_edge, longest_edge
+                        image = image.resize((W, H))
+                        buffered = BytesIO()
+                        image.save(buffered, format="JPEG")
+                        img_b64_str = base64.b64encode(buffered.getvalue()).decode()
+                        img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
+                        msg = msg.replace("<image_placeholder>", img_str)
+                ret.append([msg, None])
+            else:
+                ret[-1][-1] = msg
+        return ret
+    def to_gradio_history(conv):
+        """Convert the conversation to gradio history state."""
+        return conv.messages[conv.offset :]
+
+
+    def get_prompt(conv) -> str:
+        """Get the prompt for generation."""
+        system_prompt = conv.system_template.format(system_message=conv.system_message)
+        if conv.sep_style == SeparatorStyle.DeepSeek:
+            seps = [conv.sep, conv.sep2]
+            if system_prompt == "" or system_prompt is None:
+                ret = ""
+            else:
+                ret = system_prompt + seps[0]
+            for i, (role, message) in enumerate(conv.messages):
+                if message:
+                    if type(message) is tuple:  # multimodal message
+                        message, _ = message
+                    ret += role + ": " + message + seps[i % 2]
+                else:
+                    ret += role + ":"
+            return ret
+        else:
+            return conv.get_prompt
+
+    def predict(text, chatbot, history, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens, model_select_dropdown,):
+        """
+        Function to predict the response based on the user's input and selected model.
+        Parameters:
+        user_text (str): The input text from the user.
+        user_image (str): The input image from the user.
+        chatbot (str): The chatbot's name.
+        history (str): The history of the chat.
+        top_p (float): The top-p parameter for the model.
+        temperature (float): The temperature parameter for the model.
+        max_length_tokens (int): The maximum length of tokens for the model.
+        max_context_length_tokens (int): The maximum length of context tokens for the model.
+        model_select_dropdown (str): The selected model from the dropdown.
+        Returns:
+        generator: A generator that yields the chatbot outputs, history, and status.
+        """
+        print("running the prediction function")
+        # try:
+        #     tokenizer, vl_gpt, vl_chat_processor = models[model_select_dropdown]
+
+        #     if text == "":
+        #         yield chatbot, history, "Empty context."
+        #         return
+        # except KeyError:
+        #     yield [[text, "No Model Found"]], [], "No Model Found"
+        #     return
+
+        conversation = generate_prompt_with_history(
+            text,
+            image,
+            history,
+            max_length=max_context_length_tokens,
+        )
+        prompts = convert_conversation_to_prompts(conversation)
+        gradio_chatbot_output = to_gradio_chatbot(conversation)
+
+        # full_response = ""
+        # with torch.no_grad():
+        #     for x in deepseek_generate(
+        #         prompts=prompts,
+        #         vl_gpt=vl_gpt,
+        #         vl_chat_processor=vl_chat_processor,
+        #         tokenizer=tokenizer,
+        #         stop_words=stop_words,
+        #         max_length=max_length_tokens,
+        #         temperature=temperature,
+        #         repetition_penalty=repetition_penalty,
+        #         top_p=top_p,
+        #     ):
+        #         full_response += x
+        #         response = strip_stop_words(full_response, stop_words)
+        #         conversation.update_last_message(response)
+        #         gradio_chatbot_output[-1][1] = response
+        #         yield gradio_chatbot_output, to_gradio_history(
+        #             conversation
+        #         ),
+        "Generating..."
+
+        print("flushed result to gradio")
+        # torch.cuda.empty_cache()
+
+        # if is_variable_assigned("x"):
+        #     print(f"{model_select_dropdown}:\n{text}\n{'-' * 80}\n{x}\n{'=' * 80}")
+        #     print(
+        #         f"temperature: {temperature}, top_p: {top_p}, repetition_penalty: {repetition_penalty}, max_length_tokens: {max_length_tokens}"
+        #     )
+
+        yield gradio_chatbot_output, to_gradio_history(conversation), "Generate: Success"
+
+
+    def retry(
+        text,
+        image,
+        chatbot,
+        history,
+        top_p,
+        temperature,
+        repetition_penalty,
+        max_length_tokens,
+        max_context_length_tokens,
+        model_select_dropdown,
+    ):
+        if len(history) == 0:
+            yield (chatbot, history, "Empty context")
+            return
+
+        chatbot.pop()
+        history.pop()
+        text = history.pop()[-1]
+        if type(text) is tuple:
+            text, image = text
+
+        yield from predict(
+            text,
+            chatbot,
+            history,
+            top_p,
+            temperature,
+            repetition_penalty,
+            max_length_tokens,
+            max_context_length_tokens,
+            model_select_dropdown,
+        )
+
+
 class Application:
     def __init__(self):
         self.api_key_manager = APIKeyManager()
-        self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
+        # self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="/your_files_here")
+        self.data_processor = DataProcessor(source_file="", collection_name="adapt-a-rag", persist_directory="your_files_here")
         self.claude_model_manager = ClaudeModelManager()
         self.synthetic_data_handler = SyntheticDataHandler()
         self.chatbot_manager = ChatbotManager()
@@ -551,10 +858,12 @@ class Application:
 
             with gr.Accordion("Chatbot") as chatbot_accordion:
                 text_input = gr.Textbox(label="Enter your question")
-                model_select = gr.Dropdown(label="Select Model", choices=list(self.chatbot_manager.models.keys()))
-                top_p_input = gr.Slider(label="Top-p", min_value=0.0, max_value=1.0, value=0.95, step=0.01)
-                temperature_input = gr.Slider(label="Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.01)
-                repetition_penalty_input = gr.Slider(label="Repetition Penalty", min_value=1.0, max_value=2.0, value=1.1, step=0.1)
+                # model_select = gr.Dropdown(label="Select Model", choices=list(self.chatbot_manager.models.keys()))
+                model_select = gr.Dropdown(label="Select Model", choices=[ClaudeModelManager(api_key=os.getenv("ANTHROPIC_API_KEY"))])
+                top_p_input = gr.Slider(label="Top-p", minimum=0.0, maximum=1.0, value=0.95, step=0.01)
+                # top_p_input = gr.Slider()
+                temperature_input = gr.Slider(label="Temperature", minimum=0.0, maximum=1.0, value=0.7, step=0.01)
+                repetition_penalty_input = gr.Slider(label="Repetition Penalty", minimum=1.0, maximum=2.0, value=1.1, step=0.1)
                 max_length_tokens_input = gr.Number(label="Max Length Tokens", value=2048)
                 max_context_length_tokens_input = gr.Number(label="Max Context Length Tokens", value=2048)
                 chatbot_output = gr.Chatbot(label="Chatbot Conversation")
@@ -571,3 +880,12 @@ class Application:
 if __name__ == "__main__":
     app = Application()
     app.main()
+
+# Example usage
+# source_file = "example.txt"  # Replace with your source file path
+# collection_name = "adapt-a-rag" #Need to be defined
+# persist_directory = "/your_files_here" #Need to be defined
+
+# loaded_data = load_data_from_source_and_store(source_file, collection_name="adapt-a-rag", persist_directory="/your_files_here")
+# print("Data loaded and stored successfully in ChromaDB.")
+
