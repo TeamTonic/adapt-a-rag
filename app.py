@@ -39,6 +39,7 @@ from llama_index.readers.web import WholeSiteReader
 import llama_parse
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
+
 import random
 from typing import List, Optional
 from pydantic import BaseModel
@@ -54,6 +55,60 @@ import os
 import dotenv
 from dotenv import load_dotenv, set_key
 from pathlib import Path
+
+# Assume all necessary imports for llama_index readers are correctly done at the beginning
+def load_data_from_source(source: Union[str, dict]) -> Any:
+    """
+    Loads data from various sources using the appropriate llama_index reader based on the source type.
+
+    :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
+    :return: Loaded data.
+    """
+    if isinstance(source, str):
+        ext = os.path.splitext(source)[-1].lower()
+        if ext == '.csv':
+            reader = CSVReader()
+        elif ext == '.docx':
+            reader = DocxReader()
+        elif ext == '.epub':
+            reader = EpubReader()
+        elif ext == '.html':
+            reader = HTMLTagReader()
+        elif ext == '.hwp':
+            reader = HWPReader()
+        elif ext == '.ipynb':
+            reader = IPYNBReader()
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            reader = ImageReader()  # Assuming ImageReader can handle common image formats
+        elif ext == '.md':
+            reader = MarkdownReader()
+        elif ext == '.mbox':
+            reader = MboxReader()
+        elif ext == '.pdf':
+            reader = PDFReader()
+        elif ext == '.pptx':
+            reader = PptxReader()
+        elif ext == '.rtf':
+            reader = RTFReader()
+        elif ext == '.xml':
+            reader = XMLReader()
+        # Add cases for other specific file extensions if any
+        elif source.startswith('http'):
+            reader = AsyncWebPageReader()  # Simplified assumption for URLs
+        else:
+            raise ValueError(f"Unsupported source type: {source}")
+    elif isinstance(source, dict):
+        # This example uses AsyncWebPageReader for demonstration; adjust according to your needs
+        reader = AsyncWebPageReader()
+    else:
+        raise TypeError("Source must be a string or dictionary.")
+    
+    # Use the reader to load data
+    # Placeholder: adapt this call to match the actual reader method for loading or reading data
+    data = reader.read(source)  # Adjust method name as necessary
+
+    return data
+
 
 def set_api_keys(anthropic_api_key: str, openai_api_key: str):
     """
