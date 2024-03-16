@@ -45,7 +45,7 @@ from pydantic import BaseModel
 import dspy
 import gradio as gr
 import dspy
-from dspy.retrieve import ChromadbRM
+from dspy.retrieve import chromadb_rm as ChromadbRM
 from dspy.evaluate import Evaluate
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
