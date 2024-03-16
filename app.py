@@ -195,15 +195,20 @@ def load_documents_from_folder(folder_path: str) -> List[Document]:
 ### DSPY DATA GENERATOR
 
 class descriptionSignature(dspy.Signature):
+  # add self.env.prompts
   field_name = dspy.InputField(desc=field_prompt)
   example = dspy.InputField(desc=example_prompt)
   description = dspy.OutputField(desc=description_prompt)
+
 class SyntheticDataGenerator:
     def __init__(self, schema_class: Optional[BaseModel] = None, examples: Optional[List[dspy.Example]] = None):
         self.schema_class = schema_class
         self.examples = examples
+        print("SyntheticDataGenerator initialized.")
+
 
     def generate(self, sample_size: int) -> List[dspy.Example]:
+        print(f"Starting data generation for sample size: {sample_size}")
         if not self.schema_class and not self.examples:
             raise ValueError("Either a schema_class or examples must be provided.")
         if self.examples and len(self.examples) >= sample_size:
@@ -211,11 +216,13 @@ class SyntheticDataGenerator:
             return self.examples[:sample_size]
 
         additional_samples_needed = sample_size - (len(self.examples) if self.examples else 0)
+        print(f"Generating {additional_samples_needed} additional samples.")
         generated_examples = self._generate_additional_examples(additional_samples_needed)
 
         return self.examples + generated_examples if self.examples else generated_examples
 
     def _define_or_infer_fields(self):
+        print("Defining or inferring fields for data generation.")
         if self.schema_class:
             data_schema = self.schema_class.model_json_schema()
             properties = data_schema['properties']
@@ -229,6 +236,7 @@ class SyntheticDataGenerator:
         return properties
 
     def _generate_additional_examples(self, additional_samples_needed: int) -> List[dspy.Example]:
+        print(f"Generating {additional_samples_needed} additional examples.")
         properties = self._define_or_infer_fields()
         class_name = f"{self.schema_class.__name__ if self.schema_class else 'Inferred'}Signature"
         fields = self._prepare_fields(properties)
@@ -241,6 +249,7 @@ class SyntheticDataGenerator:
                 for completion in response.completions]
 
     def _prepare_fields(self, properties) -> dict:
+        print("Preparing fields for the signature class.")
         return {
             '__doc__': f"Generates the following outputs: {{{', '.join(properties.keys())}}}.",
             'sindex': dspy.InputField(desc="a random string"),
