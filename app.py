@@ -45,6 +45,7 @@ from pydantic import BaseModel
 import dspy
 import gradio as gr
 import dspy
+from dspy.retrieve import ChromadbRM
 from dspy.evaluate import Evaluate
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch, BootstrapFinetune
@@ -376,24 +377,24 @@ class DatasetPreparation:
         testset = [x.with_inputs('question') for x in dataset.test]
         return trainset, devset, testset
 
-class BasicMH(dspy.Module):
-    def __init__(self, claude_model, passages_per_hop=3):
-        super().__init__()
-        self.claude_model = claude_model
-        self.passages_per_hop = passages_per_hop
+# class BasicMH(dspy.Module):
+#     def __init__(self, claude_model, passages_per_hop=3):
+#         super().__init__()
+#         self.claude_model = claude_model
+#         self.passages_per_hop = passages_per_hop
     
-    def forward(self, question):
-        context = []
-        for hop in range(2):
-            search_results = self.claude_model.search(question, context=context, k=self.passages_per_hop)
-            passages = [result.passage for result in search_results]
-            context = self.deduplicate(context + passages)
-        answer = self.claude_model.generate(context=context, question=question)
-        return answer
+#     def forward(self, question):
+#         context = []
+#         for hop in range(2):
+#             search_results = self.claude_model.search(question, context=context, k=self.passages_per_hop)
+#             passages = [result.passage for result in search_results]
+#             context = self.deduplicate(context + passages)
+#         answer = self.claude_model.generate(context=context, question=question)
+#         return answer
 
-    @staticmethod
-    def deduplicate(passages):
-        return list(dict.fromkeys(passages))
+#     @staticmethod
+#     def deduplicate(passages):
+#         return list(dict.fromkeys(passages))
 
 class ModelCompilationAndEnsemble:
     @staticmethod
