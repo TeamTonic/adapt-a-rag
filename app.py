@@ -64,7 +64,10 @@ def load_data_from_source(source: Union[str, dict]) -> Any:
     :return: Loaded data.
     """
     if isinstance(source, str):
+        print("Source is a string.")
         ext = os.path.splitext(source)[-1].lower()
+        print(f"Detected extension: {ext}")
+
         if ext == '.csv':
             reader = CSVReader()
         elif ext == '.docx':
@@ -91,21 +94,24 @@ def load_data_from_source(source: Union[str, dict]) -> Any:
             reader = RTFReader()
         elif ext == '.xml':
             reader = XMLReader()
-        # Add cases for other specific file extensions if any
-        elif source.startswith('http'):
+         elif source.startswith('http'):
+            print("Source is a URL.")
             reader = AsyncWebPageReader()  # Simplified assumption for URLs
         else:
+            print(f"Unsupported source type: {source}")
             raise ValueError(f"Unsupported source type: {source}")
     elif isinstance(source, dict):
-        # This example uses AsyncWebPageReader for demonstration; adjust according to your needs
+        print("Source is a dictionary.")
         reader = AsyncWebPageReader()
     else:
+        print("Source type is neither string nor dictionary.")
         raise TypeError("Source must be a string or dictionary.")
     
+    print("Using reader to load data...")
     # Use the reader to load data
-    # Placeholder: adapt this call to match the actual reader method for loading or reading data
     data = reader.read(source)  # Adjust method name as necessary
-    # return readers.get(ext, None)
+    print("Data loaded successfully.")
+    
     return data
 
 def set_api_keys(anthropic_api_key: str, openai_api_key: str):
