@@ -59,7 +59,114 @@ from llama_index.core import SimpleDirectoryReader
 
 # # async batch
 # documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
+import gradio as gr
 
+def set_api_keys(anthropic_api_key: str, openai_api_key: str):
+    """
+    Function to securely set API keys. This example prints a confirmation message
+    but in a real application, you should set environment variables, store them securely,
+    or directly authenticate with your services as needed.
+    """
+    # For demonstration purposes only. Replace with secure handling as needed.
+    os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
+    os.environ["OPENAI_API_KEY"] = openai_api_key
+    
+    # Returns a confirmation without exposing the keys
+    return "API keys updated successfully. Please proceed with your operations."
+
+# Dummy backend function for handling user query
+def handle_query(user_query: str) -> str:
+    # Placeholder for processing user query
+    return f"Processed query: {user_query}"
+
+# Dummy backend function for handling repository input
+def handle_repository(repository_link: str) -> str:
+    # Placeholder for processing repository input
+    return f"Processed repository link: {repository_link}"
+
+# New dummy function for handling synthetic data generation
+def handle_synthetic_data(schema_class_name: str, sample_size: int) -> str:
+    # Placeholder for generating synthetic data based on the schema class name and sample size
+    return f"Synthetic data for schema '{schema_class_name}' with {sample_size} samples has been generated."
+
+# New dummy function for handling file uploads
+def handle_file_upload(uploaded_file):
+    # Placeholder for processing the uploaded file
+    if uploaded_file is not None:
+        return f"Uploaded file '{uploaded_file.name}' has been processed."
+    return "No file was uploaded."
+
+def main():
+    with gr.Blocks() as demo:
+        gr.Markdown("### Securely Input API Keys")
+        with gr.Row():
+            anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", placeholder="Enter your Anthropic API Key", type="password")
+            openai_api_key_input = gr.Textbox(label="OpenAI API Key", placeholder="Enter your OpenAI API Key", type="password")
+        submit_button = gr.Button("Submit")
+        confirmation_output = gr.Textbox(label="Confirmation", visible=False)  # Keep invisible for added security
+
+        submit_button.click(
+            fn=set_api_keys,
+            inputs=[anthropic_api_key_input, openai_api_key_input],
+            outputs=confirmation_output
+        )
+
+        with gr.Tab("User Query"):
+            with gr.Row():
+                user_query_input = gr.Textbox(label="Enter your query/prompt")
+            query_button = gr.Button("Submit Query")
+            query_output = gr.Textbox()
+
+            query_button.click(
+                fn=handle_query,
+                inputs=[user_query_input],
+                outputs=query_output
+            )
+
+        with gr.Tab("Repository Input"):
+            with gr.Row():
+                repository_link_input = gr.Textbox(label="Enter repository link")
+            repository_button = gr.Button("Process Repository")
+            repository_output = gr.Textbox()
+
+            repository_button.click(
+                fn=handle_repository,
+                inputs=[repository_link_input],
+                outputs=repository_output
+            )
+
+        with gr.Tab("Generate Synthetic Data"):
+            with gr.Row():
+                schema_input = gr.Textbox(label="Schema Class Name")
+                sample_size_input = gr.Number(label="Sample Size", value=100)
+            synthetic_data_button = gr.Button("Generate Synthetic Data")
+            synthetic_data_output = gr.Textbox()
+
+            synthetic_data_button.click(
+                fn=handle_synthetic_data,
+                inputs=[schema_input, sample_size_input],
+                outputs=synthetic_data_output
+            )
+
+        with gr.Tab("Process Data"):
+            with gr.Row():
+                file_upload = gr.File(label="Upload Data File")
+            file_upload_button = gr.Button("Process Uploaded File")
+            file_upload_output = gr.Textbox()
+
+            file_upload_button.click(
+                fn=handle_file_upload,
+                inputs=[file_upload],
+                outputs=file_upload_output
+            )
+
+    demo.launch()
+
+if __name__ == "__main__":
+    main()
+
+
+    
 from dspy.modules.anthropic import Claude
 anthropicChat = Claude(model="claude-3-opus-20240229", port=ports, max_tokens=150)
 
