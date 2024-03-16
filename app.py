@@ -41,24 +41,6 @@ from llama_index.readers.web import WholeSiteReader
 import llama_parse
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
-# parser = LlamaParse(
-#     api_key="llx-...",  # can also be set in your env as LLAMA_CLOUD_API_KEY
-#     result_type="markdown",  # "markdown" and "text" are available
-#     num_workers=4, # if multiple files passed, split in `num_workers` API calls
-#     verbose=True,
-#     language="en" # Optionaly you can define a language, default=en
-# )
-# # sync
-# documents = parser.load_data("./my_file.pdf")
-
-# # sync batch
-# documents = parser.load_data(["./my_file1.pdf", "./my_file2.pdf"])
-
-# # async
-# documents = await parser.aload_data("./my_file.pdf")
-
-# # async batch
-# documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 import gradio as gr
 
 def set_api_keys(anthropic_api_key: str, openai_api_key: str):
@@ -95,75 +77,6 @@ def handle_file_upload(uploaded_file):
     if uploaded_file is not None:
         return f"Uploaded file '{uploaded_file.name}' has been processed."
     return "No file was uploaded."
-
-def main():
-    with gr.Blocks() as demo:
-        gr.Markdown("### Securely Input API Keys")
-        with gr.Row():
-            anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", placeholder="Enter your Anthropic API Key", type="password")
-            openai_api_key_input = gr.Textbox(label="OpenAI API Key", placeholder="Enter your OpenAI API Key", type="password")
-        submit_button = gr.Button("Submit")
-        confirmation_output = gr.Textbox(label="Confirmation", visible=False)  # Keep invisible for added security
-
-        submit_button.click(
-            fn=set_api_keys,
-            inputs=[anthropic_api_key_input, openai_api_key_input],
-            outputs=confirmation_output
-        )
-
-        with gr.Tab("User Query"):
-            with gr.Row():
-                user_query_input = gr.Textbox(label="Enter your query/prompt")
-            query_button = gr.Button("Submit Query")
-            query_output = gr.Textbox()
-
-            query_button.click(
-                fn=handle_query,
-                inputs=[user_query_input],
-                outputs=query_output
-            )
-
-        with gr.Tab("Repository Input"):
-            with gr.Row():
-                repository_link_input = gr.Textbox(label="Enter repository link")
-            repository_button = gr.Button("Process Repository")
-            repository_output = gr.Textbox()
-
-            repository_button.click(
-                fn=handle_repository,
-                inputs=[repository_link_input],
-                outputs=repository_output
-            )
-
-        with gr.Tab("Generate Synthetic Data"):
-            with gr.Row():
-                schema_input = gr.Textbox(label="Schema Class Name")
-                sample_size_input = gr.Number(label="Sample Size", value=100)
-            synthetic_data_button = gr.Button("Generate Synthetic Data")
-            synthetic_data_output = gr.Textbox()
-
-            synthetic_data_button.click(
-                fn=handle_synthetic_data,
-                inputs=[schema_input, sample_size_input],
-                outputs=synthetic_data_output
-            )
-
-        with gr.Tab("Process Data"):
-            with gr.Row():
-                file_upload = gr.File(label="Upload Data File")
-            file_upload_button = gr.Button("Process Uploaded File")
-            file_upload_output = gr.Textbox()
-
-            file_upload_button.click(
-                fn=handle_file_upload,
-                inputs=[file_upload],
-                outputs=file_upload_output
-            )
-
-    demo.launch()
-
-if __name__ == "__main__":
-    main()
 
 
     
@@ -280,23 +193,6 @@ class SyntheticDataGenerator:
 generator = SyntheticDataGenerator(examples=existing_examples)
 dataframe = generator.generate(sample_size=5)
 
-#Ragas : https://colab.research.google.com/gist/virattt/6a91d2a9dcf99604637e400d48d2a918/ragas-first-look.ipynb
-#from ragas.testset.generator import TestsetGenerator
-#from ragas.testset.evolutions import simple, reasoning, multi_context
-
-# generator with openai models
-# generator = TestsetGenerator.with_openai()
-
-# generate testset
-#testset = generator.generate_with_langchain_docs(documents, test_size=10, distributions={simple: 0.5, reasoning: 0.25, multi_context: 0.25})
-
-# visualize the dataset as a pandas DataFrame
-#dataframe = testset.to_pandas()
-#dataframe.head(10)
-
-
-#### DSPY APPLICATION LOGIC GOES HERE
-
 ## LOADING DATA
 %load_ext autoreload
 %autoreload 2
@@ -403,31 +299,6 @@ class BasicMH(dspy.Module):
         return answer
 
         
-## Compiling using meta-llama/Llama-2-13b-chat-hf
-#RECOMPILE_INTO_MODEL_FROM_SCRATCH = False
-#NUM_THREADS = 24
-
-#metric_EM = dspy.evaluate.answer_exact_match
-
-#if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
-#    tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
-#    basicmh_bs = tp.compile(BasicMH(), trainset=trainset[:50], valset=trainset[50:200])
-
-#    ensemble = [prog for *_, prog in basicmh_bs.candidate_programs[:4]]
-
-#    for idx, prog in enumerate(ensemble):
-#        # prog.save(f'multihop_llama213b_{idx}.json')
-#        pass
-#if not RECOMPILE_INTO_MODEL_FROM_SCRATCH:
-#    ensemble = []
-
-#    for idx in range(4):
-#        prog = BasicMH()
-#        prog.load(f'multihop_llama213b_{idx}.json')
-#        ensemble.append(prog)
-#llama_program = ensemble[0]
-#RECOMPILE_INTO_MODEL_FROM_SCRATCH = False
-#NUM_THREADS = 24
 
 metric_EM = dspy.evaluate.answer_exact_match
 
@@ -454,12 +325,118 @@ else:
 # Select the first Claude model from the ensemble
 claude_program = ensemble[0]
 
+def main():
+    with gr.Blocks() as demo:
+        gr.Markdown("### Securely Input API Keys")
+        with gr.Row():
+            anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", placeholder="Enter your Anthropic API Key", type="password")
+            openai_api_key_input = gr.Textbox(label="OpenAI API Key", placeholder="Enter your OpenAI API Key", type="password")
+        submit_button = gr.Button("Submit")
+        confirmation_output = gr.Textbox(label="Confirmation", visible=False)  # Keep invisible for added security
+
+        submit_button.click(
+            fn=set_api_keys,
+            inputs=[anthropic_api_key_input, openai_api_key_input],
+            outputs=confirmation_output
+        )
+
+        with gr.Tab("User Query"):
+            with gr.Row():
+                user_query_input = gr.Textbox(label="Enter your query/prompt")
+            query_button = gr.Button("Submit Query")
+            query_output = gr.Textbox()
+
+            query_button.click(
+                fn=handle_query,
+                inputs=[user_query_input],
+                outputs=query_output
+            )
+
+        with gr.Tab("Repository Input"):
+            with gr.Row():
+                repository_link_input = gr.Textbox(label="Enter repository link")
+            repository_button = gr.Button("Process Repository")
+            repository_output = gr.Textbox()
+
+            repository_button.click(
+                fn=handle_repository,
+                inputs=[repository_link_input],
+                outputs=repository_output
+            )
+
+        with gr.Tab("Generate Synthetic Data"):
+            with gr.Row():
+                schema_input = gr.Textbox(label="Schema Class Name")
+                sample_size_input = gr.Number(label="Sample Size", value=100)
+            synthetic_data_button = gr.Button("Generate Synthetic Data")
+            synthetic_data_output = gr.Textbox()
+
+            synthetic_data_button.click(
+                fn=handle_synthetic_data,
+                inputs=[schema_input, sample_size_input],
+                outputs=synthetic_data_output
+            )
+
+        with gr.Tab("Process Data"):
+            with gr.Row():
+                file_upload = gr.File(label="Upload Data File")
+            file_upload_button = gr.Button("Process Uploaded File")
+            file_upload_output = gr.Textbox()
+
+            file_upload_button.click(
+                fn=handle_file_upload,
+                inputs=[file_upload],
+                outputs=file_upload_output
+            )
+
+    demo.launch()
+
+if __name__ == "__main__":
+    main()
 
 
 
 
+
+
+# parser = LlamaParse(
+#     api_key="llx-...",  # can also be set in your env as LLAMA_CLOUD_API_KEY
+#     result_type="markdown",  # "markdown" and "text" are available
+#     num_workers=4, # if multiple files passed, split in `num_workers` API calls
+#     verbose=True,
+#     language="en" # Optionaly you can define a language, default=en
+# )
+# # sync
+# documents = parser.load_data("./my_file.pdf")
+
+# # sync batch
+# documents = parser.load_data(["./my_file1.pdf", "./my_file2.pdf"])
+
+# # async
+# documents = await parser.aload_data("./my_file.pdf")
+
+# # async batch
+# documents = await parser.aload_data(["./my_file1.pdf", "./my_file2.pdf"])
 # LlamaPack example
-from llama_index.core.llama_pack import download_llama_pack
+# from llama_index.core.llama_pack import download_llama_pack
+
+#Ragas : https://colab.research.google.com/gist/virattt/6a91d2a9dcf99604637e400d48d2a918/ragas-first-look.ipynb
+#from ragas.testset.generator import TestsetGenerator
+#from ragas.testset.evolutions import simple, reasoning, multi_context
+
+# generator with openai models
+# generator = TestsetGenerator.with_openai()
+
+# generate testset
+#testset = generator.generate_with_langchain_docs(documents, test_size=10, distributions={simple: 0.5, reasoning: 0.25, multi_context: 0.25})
+
+# visualize the dataset as a pandas DataFrame
+#dataframe = testset.to_pandas()
+#dataframe.head(10)
+
+
+#### DSPY APPLICATION LOGIC GOES HERE
+
 
 # We will show you how to import the agent from these files!
 
@@ -508,3 +485,29 @@ from llama_index.core.llama_pack import download_llama_pack
 # file_extractor = {".pdf": parser}
 # documents = SimpleDirectoryReader("./data", file_extractor=file_extractor).load_data()
 
+
+## Compiling using meta-llama/Llama-2-13b-chat-hf
+#RECOMPILE_INTO_MODEL_FROM_SCRATCH = False
+#NUM_THREADS = 24
+
+#metric_EM = dspy.evaluate.answer_exact_match
+
+#if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
+#    tp = BootstrapFewShotWithRandomSearch(metric=metric_EM, max_bootstrapped_demos=2, num_threads=NUM_THREADS)
+#    basicmh_bs = tp.compile(BasicMH(), trainset=trainset[:50], valset=trainset[50:200])
+
+#    ensemble = [prog for *_, prog in basicmh_bs.candidate_programs[:4]]
+
+#    for idx, prog in enumerate(ensemble):
+#        # prog.save(f'multihop_llama213b_{idx}.json')
+#        pass
+#if not RECOMPILE_INTO_MODEL_FROM_SCRATCH:
+#    ensemble = []
+
+#    for idx in range(4):
+#        prog = BasicMH()
+#        prog.load(f'multihop_llama213b_{idx}.json')
+#        ensemble.append(prog)
+#llama_program = ensemble[0]
+#RECOMPILE_INTO_MODEL_FROM_SCRATCH = False
+#NUM_THREADS = 24
