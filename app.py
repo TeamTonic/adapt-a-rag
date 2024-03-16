@@ -56,63 +56,71 @@ from dotenv import load_dotenv, set_key
 from pathlib import Path
 
 # Assume all necessary imports for llama_index readers are correctly done at the beginning
-def load_data_from_source(source: Union[str, dict]) -> Any:
+def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
     """
-    Loads data from various sources using the appropriate llama_index reader based on the source type.
+    Loads data from various sources and stores the data in ChromaDB.
 
     :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
+    :param collection_name: Name of the ChromaDB collection to store the data.
+    :param persist_directory: Path to the directory where ChromaDB data will be persisted.
     :return: Loaded data.
     """
+    # Determine the file extension
     if isinstance(source, str):
-        print("Source is a string.")
         ext = os.path.splitext(source)[-1].lower()
-        print(f"Detected extension: {ext}")
-
-        if ext == '.csv':
-            reader = CSVReader()
-        elif ext == '.docx':
-            reader = DocxReader()
-        elif ext == '.epub':
-            reader = EpubReader()
-        elif ext == '.html':
-            reader = HTMLTagReader()
-        elif ext == '.hwp':
-            reader = HWPReader()
-        elif ext == '.ipynb':
-            reader = IPYNBReader()
-        elif ext in ['.png', '.jpg', '.jpeg']:
-            reader = ImageReader()  # Assuming ImageReader can handle common image formats
-        elif ext == '.md':
-            reader = MarkdownReader()
-        elif ext == '.mbox':
-            reader = MboxReader()
-        elif ext == '.pdf':
-            reader = PDFReader()
-        elif ext == '.pptx':
-            reader = PptxReader()
-        elif ext == '.rtf':
-            reader = RTFReader()
-        elif ext == '.xml':
-            reader = XMLReader()
-         elif source.startswith('http'):
-            print("Source is a URL.")
-            reader = AsyncWebPageReader()  # Simplified assumption for URLs
-        else:
-            print(f"Unsupported source type: {source}")
-            raise ValueError(f"Unsupported source type: {source}")
-    elif isinstance(source, dict):
-        print("Source is a dictionary.")
-        reader = AsyncWebPageReader()
     else:
-        print("Source type is neither string nor dictionary.")
-        raise TypeError("Source must be a string or dictionary.")
-    
-    print("Using reader to load data...")
+        raise TypeError("Source must be a string (file path or URL).")
+
+    # Load data using appropriate reader
+    if ext == '.csv':
+        reader = CSVReader()
+    elif ext == '.docx':
+        reader = DocxReader()
+    elif ext == '.epub':
+        reader = EpubReader()
+    elif ext == '.html':
+        reader = HTMLTagReader()
+    elif ext == '.hwp':
+        reader = HWPReader()
+    elif ext == '.ipynb':
+        reader = IPYNBReader()
+    elif ext in ['.png', '.jpg', '.jpeg']:
+        reader = ImageReader()  # Assuming ImageReader can handle common image formats
+    elif ext == '.md':
+        reader = MarkdownReader()
+    elif ext == '.mbox':
+        reader = MboxReader()
+    elif ext == '.pdf':
+        reader = PDFReader()
+    elif ext == '.pptx':
+        reader = PptxReader()
+    elif ext == '.rtf':
+        reader = RTFReader()
+    elif ext == '.xml':
+        reader = XMLReader()
+    elif source.startswith('http'):
+        reader = AsyncWebPageReader()  # Simplified assumption for URLs
+    else:
+        raise ValueError(f"Unsupported source type: {source}")
+
     # Use the reader to load data
     data = reader.read(source)  # Adjust method name as necessary
-    print("Data loaded successfully.")
-    
+
+    # Store the data in ChromaDB
+    retriever_model = ChromadbRM(collection_name, persist_directory)
+    retriever_model(data)
+
     return data
+    
+    # Example usage
+source_file = "example.txt"  # Replace with your source file path
+collection_name = "example_collection" #Need to be defined
+persist_directory = "/path/to/persist/directory" #Need to be defined
+
+loaded_data = load_data_from_source_and_store(source_file, collection_name, persist_directory)
+print("Data loaded and stored successfully in ChromaDB.")
+
+
 
 def set_api_keys(anthropic_api_key: str, openai_api_key: str):
     """
