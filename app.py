@@ -235,14 +235,25 @@ class DocumentLoader:
 
 ### DSPY DATA GENERATOR
 
-class descriptionSignature(dspy.Signature):
-    load_dotenv()
-    field_prompt = os.getenv('FIELDPROMPT', 'Default field prompt if not set')
-    example_prompt = os.getenv('EXAMPLEPROMPT', 'Default example prompt if not set')
-    description_prompt = os.getenv('DESCRIPTIONPROMPT', 'Default description prompt if not set')
-    field_name = dspy.InputField(desc=field_prompt)
-    example = dspy.InputField(desc=example_prompt)
-    description = dspy.OutputField(desc=description_prompt)
+# class descriptionSignature(dspy.Signature):
+#     load_dotenv()
+#     field_prompt = os.getenv('FIELDPROMPT', 'Default field prompt if not set')
+#     example_prompt = os.getenv('EXAMPLEPROMPT', 'Default example prompt if not set')
+#     description_prompt = os.getenv('DESCRIPTIONPROMPT', 'Default description prompt if not set')
+#     field_name = dspy.InputField(desc=field_prompt)
+#     example = dspy.InputField(desc=example_prompt)
+#     description = dspy.OutputField(desc=description_prompt)
+    
+load_dotenv()
+
+# https://github.com/stanfordnlp/dspy?tab=readme-ov-file#4-two-powerful-concepts-signatures--teleprompters
+class DescriptionSignature(dspy.Signature):
+    """Write a simple search query that will help answer a complex question."""
+
+    context = dspy.InputField(desc="may contain relevant facts")
+    question = dspy.InputField()
+    query = dspy.OutputField()
+
 
 class SyntheticDataGenerator:
     def __init__(self, schema_class: Optional[BaseModel] = None, examples: Optional[List[dspy.Example]] = None):
@@ -271,7 +282,7 @@ class SyntheticDataGenerator:
             properties = data_schema['properties']
         elif self.examples:
             inferred_schema = self.examples[0].__dict__['_store']
-            descriptor = dspy.Predict(descriptionSignature)
+            descriptor = dspy.Predict(DescriptionSignature)
             properties = {field: {'description': str((descriptor(field_name=field, example=str(inferred_schema[field]))).description)}
                           for field in inferred_schema.keys()}
         else:
@@ -486,7 +497,7 @@ class ChatbotManager:
 
     def load_models(self):
         pass
-        return models
+        # return models
 
     def generate_response(self, text, image, model_select_dropdown, top_p, temperature, repetition_penalty, max_length_tokens, max_context_length_tokens):
         return gradio_chatbot_output, self.history, "Generate: Success"
