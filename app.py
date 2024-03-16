@@ -55,62 +55,86 @@ import dotenv
 from dotenv import load_dotenv, set_key
 from pathlib import Path
 
+
+# Define constants and configurations
+NUM_THREADS = 4  # Example constant, adjust according to your actual configuration
+RECOMPILE_INTO_MODEL_FROM_SCRATCH = False  # Example flag
+
+# ## LOADING DATA
+# %load_ext autoreload
+# %autoreload 2
+
+# %set_env CUDA_VISIBLE_DEVICES=7
+# import sys; sys.path.append('/future/u/okhattab/repos/public/stanfordnlp/dspy')
+
 # Assume all necessary imports for llama_index readers are correctly done at the beginning
-def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
-    """
-    Loads data from various sources and stores the data in ChromaDB.
 
-    :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
-    :param collection_name: Name of the ChromaDB collection to store the data.
-    :param persist_directory: Path to the directory where ChromaDB data will be persisted.
-    :return: Loaded data.
-    """
-    # Determine the file extension
-    if isinstance(source, str):
-        ext = os.path.splitext(source)[-1].lower()
-    else:
-        raise TypeError("Source must be a string (file path or URL).")
+ports = [7140, 7141, 7142, 7143, 7144, 7145]
+#llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
+colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
 
-    # Load data using appropriate reader
-    if ext == '.csv':
-        reader = CSVReader()
-    elif ext == '.docx':
-        reader = DocxReader()
-    elif ext == '.epub':
-        reader = EpubReader()
-    elif ext == '.html':
-        reader = HTMLTagReader()
-    elif ext == '.hwp':
-        reader = HWPReader()
-    elif ext == '.ipynb':
-        reader = IPYNBReader()
-    elif ext in ['.png', '.jpg', '.jpeg']:
-        reader = ImageReader()  # Assuming ImageReader can handle common image formats
-    elif ext == '.md':
-        reader = MarkdownReader()
-    elif ext == '.mbox':
-        reader = MboxReader()
-    elif ext == '.pdf':
-        reader = PDFReader()
-    elif ext == '.pptx':
-        reader = PptxReader()
-    elif ext == '.rtf':
-        reader = RTFReader()
-    elif ext == '.xml':
-        reader = XMLReader()
-    elif source.startswith('http'):
-        reader = AsyncWebPageReader()  # Simplified assumption for URLs
-    else:
-        raise ValueError(f"Unsupported source type: {source}")
+class DataProcessor:
+    def __init__(self, source_file: str, collection_name: str, persist_directory: str):
+        self.source_file = source_file
+        self.collection_name = collection_name
+        self.persist_directory = persist_directory
 
-    # Use the reader to load data
-    data = reader.read(source)  # Adjust method name as necessary
+    def load_data_from_source_and_store(self) -> Any:
+    # def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
+        """
+        Loads data from various sources and stores the data in ChromaDB.
 
-    # Store the data in ChromaDB
-    retriever_model = ChromadbRM(collection_name, persist_directory)
-    retriever_model(data)
+        :param source: A string representing a file path or a URL, or a dictionary specifying web content to fetch.
+        :param collection_name: Name of the ChromaDB collection to store the data.
+        :param persist_directory: Path to the directory where ChromaDB data will be persisted.
+        :return: Loaded data.
+        """
+        # Determine the file extension
+        if isinstance(source, str):
+            ext = os.path.splitext(source)[-1].lower()
+        else:
+            raise TypeError("Source must be a string (file path or URL).")
 
-    return data
+        # Load data using appropriate reader
+        if ext == '.csv':
+            reader = CSVReader()
+        elif ext == '.docx':
+            reader = DocxReader()
+        elif ext == '.epub':
+            reader = EpubReader()
+        elif ext == '.html':
+            reader = HTMLTagReader()
+        elif ext == '.hwp':
+            reader = HWPReader()
+        elif ext == '.ipynb':
+            reader = IPYNBReader()
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            reader = ImageReader()  # Assuming ImageReader can handle common image formats
+        elif ext == '.md':
+            reader = MarkdownReader()
+        elif ext == '.mbox':
+            reader = MboxReader()
+        elif ext == '.pdf':
+            reader = PDFReader()
+        elif ext == '.pptx':
+            reader = PptxReader()
+        elif ext == '.rtf':
+            reader = RTFReader()
+        elif ext == '.xml':
+            reader = XMLReader()
+        elif source.startswith('http'):
+            reader = AsyncWebPageReader()  # Simplified assumption for URLs
+        else:
+            raise ValueError(f"Unsupported source type: {source}")
+
+        # Use the reader to load data
+        data = reader.read(source)  # Adjust method name as necessary
+
+        # Store the data in ChromaDB
+        retriever_model = ChromadbRM(collection_name, persist_directory)
+        retriever_model(data)
+
+        return data
     
     # Example usage
 source_file = "example.txt"  # Replace with your source file path
@@ -119,86 +143,90 @@ persist_directory = "/path/to/persist/directory" #Need to be defined
 
 loaded_data = load_data_from_source_and_store(source_file, collection_name, persist_directory)
 print("Data loaded and stored successfully in ChromaDB.")
+class APIKeyManager:
 
+    @staticmethod
+    def set_api_keys(anthropic_api_key: str, openai_api_key: str):
+        """
+        Function to securely set API keys by updating the .env file in the application's directory.
+        This approach ensures that sensitive information is not hard-coded into the application.
+        """
+        print("Setting API keys...")
+        # Define the path to the .env file
+        env_path = Path('.') / '.env'
+        
+        print(f"Loading existing .env file from: {env_path}")
+        # Load existing .env file or create one if it doesn't exist
+        load_dotenv(dotenv_path=env_path, override=True)
+        
+        print("Updating .env file with new API keys...")
+        # Update the .env file with the new values
+        set_key(env_path, "ANTHROPIC_API_KEY", anthropic_api_key)
+        set_key(env_path, "OPENAI_API_KEY", openai_api_key)
+        
+        print("API keys updated successfully.")
+        # Returns a confirmation without exposing the keys
+        return "API keys updated successfully in .env file. Please proceed with your operations."
 
+    @staticmethod
+    def load_api_keys_and_prompts():
+        """
+        Loads API keys and prompts from an existing .env file into the application's environment.
+        This function assumes the .env file is located in the same directory as the script.
+        """
+        print("Loading API keys and prompts...")
+        # Define the path to the .env file
+        env_path = Path('.') / '.env'
+        
+        print(f"Loading .env file from: {env_path}")
+        # Load the .env file
+        load_dotenv(dotenv_path=env_path)
+        
+        print("Accessing variables from the environment...")
+        # Access the variables from the environment
+        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        field_prompt = os.getenv("FIELDPROMPT")
+        example_prompt = os.getenv("EXAMPLEPROMPT")
+        description_prompt = os.getenv("DESCRIPTIONPROMPT")
+        
+        print("API keys and prompts loaded successfully.")
+        # Optionally, print a confirmation or return the loaded values
+        return {
+            "ANTHROPIC_API_KEY": anthropic_api_key,
+            "OPENAI_API_KEY": openai_api_key,
+            "FIELDPROMPT": field_prompt,
+            "EXAMPLEPROMPT": example_prompt,
+            "DESCRIPTIONPROMPT": description_prompt
+        }
 
-def set_api_keys(anthropic_api_key: str, openai_api_key: str):
-    """
-    Function to securely set API keys by updating the .env file in the application's directory.
-    This approach ensures that sensitive information is not hard-coded into the application.
-    """
-    print("Setting API keys...")
-    # Define the path to the .env file
-    env_path = Path('.') / '.env'
-    
-    print(f"Loading existing .env file from: {env_path}")
-    # Load existing .env file or create one if it doesn't exist
-    load_dotenv(dotenv_path=env_path, override=True)
-    
-    print("Updating .env file with new API keys...")
-    # Update the .env file with the new values
-    set_key(env_path, "ANTHROPIC_API_KEY", anthropic_api_key)
-    set_key(env_path, "OPENAI_API_KEY", openai_api_key)
-    
-    print("API keys updated successfully.")
-    # Returns a confirmation without exposing the keys
-    return "API keys updated successfully in .env file. Please proceed with your operations."
+class DocumentLoader:
 
-def load_api_keys_and_prompts():
-    """
-    Loads API keys and prompts from an existing .env file into the application's environment.
-    This function assumes the .env file is located in the same directory as the script.
-    """
-    print("Loading API keys and prompts...")
-    # Define the path to the .env file
-    env_path = Path('.') / '.env'
-    
-    print(f"Loading .env file from: {env_path}")
-    # Load the .env file
-    load_dotenv(dotenv_path=env_path)
-    
-    print("Accessing variables from the environment...")
-    # Access the variables from the environment
-    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    field_prompt = os.getenv("FIELDPROMPT")
-    example_prompt = os.getenv("EXAMPLEPROMPT")
-    description_prompt = os.getenv("DESCRIPTIONPROMPT")
-    
-    print("API keys and prompts loaded successfully.")
-    # Optionally, print a confirmation or return the loaded values
-    return {
-        "ANTHROPIC_API_KEY": anthropic_api_key,
-        "OPENAI_API_KEY": openai_api_key,
-        "FIELDPROMPT": field_prompt,
-        "EXAMPLEPROMPT": example_prompt,
-        "DESCRIPTIONPROMPT": description_prompt
-    }
-
-def load_documents_from_folder(folder_path: str) -> List[Document]:
-    """Loads documents from files within a specified folder"""
-    folder_path = "./add_your_files_here"
-    documents = []
-    for root, _, filenames in os.walk(folder_path):
-        for filename in filenames:
-            full_path = os.path.join(root, filename)
-            
-            reader = choose_reader(full_path)
-
-            if reader:
-                print(f"Loading document from '{filename}' with {type(reader).__name__}")
+    @staticmethod
+    def load_documents_from_folder(folder_path: str) -> List[Document]:
+        """Loads documents from files within a specified folder"""
+        folder_path = "./add_your_files_here"
+        documents = []
+        for root, _, filenames in os.walk(folder_path):
+            for filename in filenames:
+                full_path = os.path.join(root, filename)
                 
-                try:
-                    docs = list(reader.load_data(input_files=[full_path]))
-                    documents.extend(docs)
+                reader = choose_reader(full_path)
+
+                if reader:
+                    print(f"Loading document from '{filename}' with {type(reader).__name__}")
                     
-                except Exception as e:
-                    print(f"Failed to load document from '{filename}'. Error: {e}")
-    # Convert to langchain format
-    documents = [ doc.to_langchain_format()
-    for doc in documents
-    ]                       
-    return documents
+                    try:
+                        docs = list(reader.load_data(input_files=[full_path]))
+                        documents.extend(docs)
+                        
+                    except Exception as e:
+                        print(f"Failed to load document from '{filename}'. Error: {e}")
+        # Convert to langchain format
+        documents = [ doc.to_langchain_format()
+        for doc in documents
+        ]                       
+        return documents
 
 ### DSPY DATA GENERATOR
 
@@ -265,64 +293,67 @@ class SyntheticDataGenerator:
                for field_name in properties.keys()},
         }
 
-# Generating synthetic data via existing examples
-generator = SyntheticDataGenerator(examples=existing_examples)
-dataframe = generator.generate(sample_size=5)
+# # Generating synthetic data via existing examples
+# generator = SyntheticDataGenerator(examples=existing_examples)
+# dataframe = generator.generate(sample_size=5)
 
-## LOADING DATA
-%load_ext autoreload
-%autoreload 2
+class ClaudeModelManager:
+    def __init__(self, model: str = "claude-3-opus-20240229", api_key: Optional[str] = None, api_base: Optional[str] = None):
+        self.model = model
+        self.api_key = api_key
+        self.api_base = api_base
+        self.initialize_claude()
 
-# %set_env CUDA_VISIBLE_DEVICES=7
-# import sys; sys.path.append('/future/u/okhattab/repos/public/stanfordnlp/dspy')
+    def initialize_claude(self):
+        """Wrapper around anthropic's API. Supports both the Anthropic and Azure APIs."""
+        def __init__(
+                self,
+                model: str = "claude-3-opus-20240229",
+                api_key: Optional[str] = None,
+                api_base: Optional[str] = None,
+                **kwargs,
+        ):
+            print("Initializing Claude...")
+            super().__init__(model)
 
-class Claude(LM):
-    """Wrapper around anthropic's API. Supports both the Anthropic and Azure APIs."""
-    def __init__(
-            self,
-            model: str = "claude-3-opus-20240229",
-            api_key: Optional[str] = None,
-            api_base: Optional[str] = None,
-            **kwargs,
-    ):
-        print("Initializing Claude...")
-        super().__init__(model)
+            try:
+                from anthropic import Anthropic, RateLimitError
+                print("Successfully imported Anthropics's API client.")
+            except ImportError as err:
+                print("Failed to import Anthropics's API client.")
+                raise ImportError("Claude requires `pip install anthropic`.") from err
+            
+            self.provider = "anthropic"
+            self.api_key = os.environ.get("ANTHROPIC_API_KEY") if api_key is None else api_key
+            if self.api_key:
+                print("API key is set.")
+            else:
+                print("API key is not set. Please ensure it's provided or set in the environment variables.")
+            
+            self.api_base = BASE_URL if api_base is None else api_base
+            print(f"API base URL is set to: {self.api_base}")
 
-        try:
-            from anthropic import Anthropic, RateLimitError
-            print("Successfully imported Anthropics's API client.")
-        except ImportError as err:
-            print("Failed to import Anthropics's API client.")
-            raise ImportError("Claude requires `pip install anthropic`.") from err
-        
-        self.provider = "anthropic"
-        self.api_key = os.environ.get("ANTHROPIC_API_KEY") if api_key is None else api_key
-        if self.api_key:
-            print("API key is set.")
-        else:
-            print("API key is not set. Please ensure it's provided or set in the environment variables.")
-        
-        self.api_base = BASE_URL if api_base is None else api_base
-        print(f"API base URL is set to: {self.api_base}")
+            self.kwargs = {
+                "temperature": 0.0 if "temperature" not in kwargs else kwargs["temperature"],
+                "max_tokens": min(kwargs.get("max_tokens", 4096), 4096),
+                "top_p": 1.0 if "top_p" not in kwargs else kwargs["top_p"],
+                "top_k": 1 if "top_k" not in kwargs else kwargs["top_k"],
+                "n": kwargs.pop("n", kwargs.pop("num_generations", 1)),
+                **kwargs,
+            }
+            self.kwargs["model"] = model
+            print(f"Model parameters set: {self.kwargs}")
 
-        self.kwargs = {
-            "temperature": 0.0 if "temperature" not in kwargs else kwargs["temperature"],
-            "max_tokens": min(kwargs.get("max_tokens", 4096), 4096),
-            "top_p": 1.0 if "top_p" not in kwargs else kwargs["top_p"],
-            "top_k": 1 if "top_k" not in kwargs else kwargs["top_k"],
-            "n": kwargs.pop("n", kwargs.pop("num_generations", 1)),
-            **kwargs,
-        }
-        self.kwargs["model"] = model
-        print(f"Model parameters set: {self.kwargs}")
+            self.history: List[dict[str, Any]] = []
+            self.client = Anthropic(api_key=self.api_key)
+            print("Anthropic client initialized.")
 
-        self.history: List[dict[str, Any]] = []
-        self.client = Anthropic(api_key=self.api_key)
-        print("Anthropic client initialized.")
+class SyntheticDataHandler:
+    def __init__(self, examples: Optional[List[dspy.Example]] = None):
+        self.generator = SyntheticDataGenerator(examples=examples)
 
-ports = [7140, 7141, 7142, 7143, 7144, 7145]
-#llamaChat = dspy.HFClientTGI(model="meta-llama/Llama-2-13b-chat-hf", port=ports, max_tokens=150) (DELETED)
-colbertv2 = dspy.ColBERTv2(url='http://20.102.90.50:2017/wiki17_abstracts')
+    def generate_data(self, sample_size: int):
+        return self.generator.generate(sample_size=sample_size)
 
 # Instantiate Claude with desired parameters
 claude_model = Claude(model="claude-3-opus-20240229")
@@ -360,8 +391,6 @@ class BasicMH(dspy.Module):
 
         return answer
 
-        
-
 metric_EM = dspy.evaluate.answer_exact_match
 
 if RECOMPILE_INTO_MODEL_FROM_SCRATCH:
@@ -386,72 +415,67 @@ else:
 
 # Select the first Claude model from the ensemble
 claude_program = ensemble[0]
+class Application:
+    def __init__(self):
+        self.api_key_manager = APIKeyManager()
+        self.data_processor = DataProcessor(source_file="", collection_name="", persist_directory="")
+        self.claude_model_manager = ClaudeModelManager()
+        self.synthetic_data_handler = SyntheticDataHandler()
+        
 
-def main():
-    with gr.Blocks() as demo:
-        gr.Markdown("### Securely Input API Keys")
-        with gr.Row():
-            anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", placeholder="Enter your Anthropic API Key", type="password")
-            openai_api_key_input = gr.Textbox(label="OpenAI API Key", placeholder="Enter your OpenAI API Key", type="password")
-        submit_button = gr.Button("Submit")
-        confirmation_output = gr.Textbox(label="Confirmation", visible=False)  # Keep invisible for added security
+    def set_api_keys(self, anthropic_api_key, openai_api_key):
+        return self.api_key_manager.set_api_keys(anthropic_api_key, openai_api_key)
 
-        submit_button.click(
-            fn=set_api_keys,
-            inputs=[anthropic_api_key_input, openai_api_key_input],
-            outputs=confirmation_output
-        )
+    def handle_file_upload(self, uploaded_file):
+        self.data_processor.source_file = uploaded_file.name
+        loaded_data = self.data_processor.load_data_from_source_and_store()
+        return f"Data from {uploaded_file.name} loaded and stored successfully."
 
-        with gr.Tab("User Query"):
-            with gr.Row():
-                user_query_input = gr.Textbox(label="Enter your query/prompt")
-            query_button = gr.Button("Submit Query")
-            query_output = gr.Textbox()
+    def handle_synthetic_data(self, schema_class_name, sample_size):
+        synthetic_data = self.synthetic_data_handler.generate_data(sample_size=int(sample_size))
+        synthetic_data_str = "\n".join([str(data) for data in synthetic_data])
+        return f"Generated {sample_size} synthetic data items:\n{synthetic_data_str}"
 
-            query_button.click(
-                fn=handle_query,
-                inputs=[user_query_input],
-                outputs=query_output
-            )
+    def main(self):
+        with gr.Blocks() as demo:
+            with gr.Tab("API Keys"):
+                with gr.Row():
+                    anthropic_api_key_input = gr.Textbox(label="Anthropic API Key", type="password")
+                    openai_api_key_input = gr.Textbox(label="OpenAI API Key", type="password")
+                submit_button = gr.Button("Submit")
+                confirmation_output = gr.Textbox(label="Confirmation", visible=False)
 
-        with gr.Tab("Repository Input"):
-            with gr.Row():
-                repository_link_input = gr.Textbox(label="Enter repository link")
-            repository_button = gr.Button("Process Repository")
-            repository_output = gr.Textbox()
+                submit_button.click(
+                    fn=self.set_api_keys,
+                    inputs=[anthropic_api_key_input, openai_api_key_input],
+                    outputs=confirmation_output
+                )
 
-            repository_button.click(
-                fn=handle_repository,
-                inputs=[repository_link_input],
-                outputs=repository_output
-            )
+            with gr.Tab("Upload Data"):
+                file_upload = gr.File(label="Upload Data File")
+                file_upload_button = gr.Button("Process Uploaded File")
+                file_upload_output = gr.Textbox()
 
-        with gr.Tab("Generate Synthetic Data"):
-            with gr.Row():
+                file_upload_button.click(
+                    fn=self.handle_file_upload,
+                    inputs=[file_upload],
+                    outputs=file_upload_output
+                )
+
+            with gr.Tab("Generate Synthetic Data"):
                 schema_input = gr.Textbox(label="Schema Class Name")
                 sample_size_input = gr.Number(label="Sample Size", value=100)
-            synthetic_data_button = gr.Button("Generate Synthetic Data")
-            synthetic_data_output = gr.Textbox()
+                synthetic_data_button = gr.Button("Generate Synthetic Data")
+                synthetic_data_output = gr.Textbox()
 
-            synthetic_data_button.click(
-                fn=handle_synthetic_data,
-                inputs=[schema_input, sample_size_input],
-                outputs=synthetic_data_output
-            )
+                synthetic_data_button.click(
+                    fn=self.handle_synthetic_data,
+                    inputs=[schema_input, sample_size_input],
+                    outputs=synthetic_data_output
+                )
 
-        with gr.Tab("Process Data"):
-            with gr.Row():
-                file_upload = gr.File(label="Upload Data File")
-            file_upload_button = gr.Button("Process Uploaded File")
-            file_upload_output = gr.Textbox()
-
-            file_upload_button.click(
-                fn=handle_file_upload,
-                inputs=[file_upload],
-                outputs=file_upload_output
-            )
-
-    demo.launch()
+        demo.launch()
 
 if __name__ == "__main__":
-    main()
+    app = Application()
+    app.main()
