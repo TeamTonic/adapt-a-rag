@@ -21,14 +21,14 @@ The application utilizes various data sources, including documents, GitHub repos
 To set up Adapt-a-RAG, follow these steps:
 
 1. Clone the repository:
-   ```
+```bash
    git clone https://github.com/Josephrp/adapt-a-rag.git
-   ```
+```
 
 2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
 3. Configure the necessary API keys and environment variables.
       - edit .env.example
@@ -36,22 +36,22 @@ To set up Adapt-a-RAG, follow these steps:
 4. add your keys and `seed prompts`to a .env file
    - open a file editor
    - add the following text exactly:
-   ```
+```python
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 FIELDPROMPT=
 EXAMPLEPROMPT=
 DESCRIPTIONPROMPT=
-   ```
+```
    
    - save the file name : `.env` in the same folder as app.py
 
 5. Add your files the folder `add_your_files_here` ; supported formats : ...
 
 6. Run the application:
-   ```
-   python app.py
-   ```
+```python
+python app.py
+```
 
 ## How It Works
 
@@ -74,16 +74,16 @@ We welcome contributions to Adapt-a-RAG! If you'd like to contribute, please fol
 1. Fork the repository on GitHub.
 
 2. Create a new branch from the `devbranch`:
-   ```
+```
    git checkout -b feature/your-feature-name devbranch
-   ```
+```
 
 3. Make your changes and commit them with descriptive commit messages.
 
 4. Push your changes to your forked repository:
-   ```
+```
    git push origin feature/your-feature-name
-   ```
+```
 
 5. Open a pull request against the `devbranch` of the main repository.
 
